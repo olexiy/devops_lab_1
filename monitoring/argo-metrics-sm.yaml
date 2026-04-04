@@ -19,3 +19,6 @@ spec:
     - port: metrics
       interval: 30s
       path: /metrics
+      scheme: https
+      tlsConfig:
+        insecureSkipVerify: true   # self-signed cert в Argo Workflows
