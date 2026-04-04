@@ -45,6 +45,18 @@ function Scale-Namespace {
         return
     }
 
+    # For monitoring: kill the Prometheus Operator first so it cannot
+    # reconcile StatefulSets back to 1 before they are scaled down.
+    if ($Namespace -eq "monitoring") {
+        Write-Host "  Stopping kube-prometheus-stack-operator first ..."
+        try {
+            kubectl scale deployment kube-prometheus-stack-operator `
+                -n $Namespace --replicas=0 2>&1 | Out-Null
+        } catch {}
+        # Brief pause to let the operator pod terminate
+        Start-Sleep -Seconds 4
+    }
+
     Write-Host "  Scaling deployments in '$Namespace' to $Replicas ..."
     try {
         kubectl scale deployment --all -n $Namespace --replicas=$Replicas 2>&1 |
