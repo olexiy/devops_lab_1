@@ -1,0 +1,23 @@
+# prometheus-mysql-exporter values
+# Chart: prometheus-community/prometheus-mysql-exporter 2.13.0 (app v0.19.0)
+# Скрапирует source-db (MySQL 8.3) в namespace databases
+
+mysql:
+  host: source-db.databases.svc.cluster.local
+  port: 3306
+  user: appuser
+  pass: apppassword
+  db: appdb
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: kube-prometheus-stack   # обязательно — Prometheus отбирает SM по этому лейблу
+  interval: 30s
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 64Mi

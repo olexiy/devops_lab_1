@@ -73,7 +73,8 @@ function Wait-NamespaceDeleted {
     $start = Get-Date
 
     while ($true) {
-        & kubectl get namespace $Name *> $null
+        # try/catch required: PS7 throws on non-zero exit when $ErrorActionPreference = "Stop"
+        try { & kubectl get namespace $Name *> $null } catch {}
 
         if ($LASTEXITCODE -ne 0) {
             return
