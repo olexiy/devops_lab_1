@@ -1,0 +1,16 @@
+# Claude Code local settings
+.claude/settings.local.json
+
+# Build artifacts
+target/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

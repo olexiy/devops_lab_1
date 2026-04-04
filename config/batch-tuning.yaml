@@ -1,0 +1,53 @@
+# === Zentrale Konfiguration für Batch-Optimierung ===
+# Alle leistungsrelevanten Parameter an einem Ort.
+# Anwendung: kubectl apply -f config/batch-tuning.yaml
+# Beim nächsten Workflow-Start werden die neuen Werte übernommen.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: batch-tuning
+  namespace: batch
+data:
+  # --- Partitionierung ---
+  PARTITION_COUNT: "50"                # Anzahl der Partitionen (Arbeitspakete)
+
+  # --- Parallelismus (Argo-Ebene) ---
+  MAX_PARALLEL_PODS: "6"              # Max. gleichzeitige Worker-Pods
+
+  # --- Spring Batch Parameter ---
+  CHUNK_SIZE: "500"                   # Chunk-Groesse (Checkpoint alle N Datensaetze)
+  FETCH_SIZE: "500"                   # JDBC fetchSize (sollte mit Chunk uebereinstimmen)
+  VIRTUAL_THREADS: "80"              # Anzahl virtueller Threads pro Pod
+
+  # --- Retry/Skip ---
+  RETRY_LIMIT: "3"                    # Wiederholungsversuche fuer fehlgeschlagene Elemente
+  SKIP_LIMIT: "100"                   # Max. Uebersprungene pro Partition
+
+  # --- Verbindungspools ---
+  SOURCE_DB_POOL_SIZE: "5"           # HikariCP-Pool fuer Quell-DB pro Pod
+  TARGET_DB_POOL_SIZE: "5"           # HikariCP-Pool fuer Ziel-DB pro Pod
+  JOBREPOSITORY_DB_POOL_SIZE: "3"    # HikariCP-Pool fuer JobRepository pro Pod
+
+  # --- Webservice ---
+  WEBSERVICE_CONNECT_TIMEOUT_MS: "2000"
+  WEBSERVICE_READ_TIMEOUT_MS: "5000"
+
+  # --- JVM-Parameter (fuer Worker-Pods) ---
+  WORKER_JVM_OPTS: >-
+    -XX:+UseZGC
+    -XX:+ZGenerational
+    -Xms1g -Xmx1536m
+    -XX:+UseStringDeduplication
+
+  # --- JVM-Parameter (fuer Init/Partitioner/Report-Pods) ---
+  LIGHTWEIGHT_JVM_OPTS: >-
+    -XX:+UseSerialGC
+    -Xms256m -Xmx512m
+
+  # --- Argo Retry ---
+  WORKER_RETRY_LIMIT: "2"            # Pod-Retry bei Absturz
+  WORKER_RETRY_BACKOFF: "30s"        # Backoff zwischen Retries
+
+  # --- Ueberwachung ---
+  METRICS_PUSH_INTERVAL: "10s"       # Push-Intervall fuer Metriken an OTel Collector
+  PROGRESS_UPDATE_INTERVAL: "10"     # Fortschritt alle N Chunks aktualisieren

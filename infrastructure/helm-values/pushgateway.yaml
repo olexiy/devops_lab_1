@@ -1,0 +1,19 @@
+# Prometheus Pushgateway values for local development
+# Chart: prometheus-community/prometheus-pushgateway 3.6.0
+# Used by short-lived batch pods to push metrics (pull model doesn't work for ephemeral pods)
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 9091
+
+resources:
+  requests:
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+# Persistence: keep pushed metrics across pod restarts
+persistentVolume:
+  enabled: false

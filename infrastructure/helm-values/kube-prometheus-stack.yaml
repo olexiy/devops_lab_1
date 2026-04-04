@@ -1,0 +1,71 @@
+# kube-prometheus-stack values for local development
+# Chart: prometheus-community/kube-prometheus-stack 82.16.1
+# Includes: Prometheus, Alertmanager, Grafana, kube-state-metrics, node-exporter
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    enableRemoteWriteReceiver: true  # Required for OTel Collector and Tempo metrics generator push
+    storageSpec:
+      emptyDir:
+        medium: ""
+    additionalScrapeConfigs:
+      - job_name: pushgateway
+        honor_labels: true  # Preserve labels set by batch jobs when pushing metrics
+        static_configs:
+          - targets:
+              - prometheus-pushgateway.monitoring.svc.cluster.local:9091
+      - job_name: otel-collector
+        static_configs:
+          - targets:
+              - opentelemetry-collector.monitoring.svc.cluster.local:8888
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      emptyDir:
+        medium: ""
+  config:
+    route:
+      receiver: "null"
+    receivers:
+      - name: "null"
+
+grafana:
+  adminPassword: "admin"
+  # kube-prometheus-stack already provisions a default Prometheus datasource.
+  # Use additionalDataSources to add Loki and Tempo alongside it.
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      url: http://loki:3100
+      jsonData:
+        derivedFields:
+          - name: TraceID
+            matcherRegex: '"traceId":"(\w+)"'
+            url: "${__value.raw}"
+            datasourceUid: tempo
+
+    - name: Tempo
+      type: tempo
+      uid: tempo
+      url: http://tempo:3200
+      jsonData:
+        tracesToLogsV2:
+          datasourceUid: loki
+          filterByTraceID: true
+          filterBySpanID: false
+        serviceMap:
+          datasourceUid: prometheus
+        nodeGraph:
+          enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true
+
+defaultRules:
+  create: true

@@ -1,0 +1,46 @@
+# Tempo values for local development
+# Chart: grafana/tempo 1.24.4
+# Mode: single-binary (all Tempo components in one pod)
+
+tempo:
+  reportingEnabled: false
+
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+  # Generate service graph and span metrics, push to Prometheus
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+
+  resources:
+    requests:
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+persistence:
+  enabled: false
+
+service:
+  type: ClusterIP
