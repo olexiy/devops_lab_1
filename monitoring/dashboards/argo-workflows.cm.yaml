@@ -105,7 +105,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -156,7 +156,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -175,7 +175,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -227,7 +227,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -272,7 +272,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -358,7 +358,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "expr": "increase(sum by (prometheus, namespace, phase) (argo_workflows_total_count{prometheus=~\"^$dc$\",namespace=~\"$ns\",phase!~\"(Error|Failed)\"})[1m:1m]) > 0 unless\nincrease(sum by (prometheus, namespace, phase) (argo_workflows_total_count{prometheus=~\"^$dc$\",namespace=~\"$ns\",phase!~\"(Error|Failed)\"})[1m:1m] offset 1h)\nor\nincrease(sum by (prometheus, namespace, phase) (argo_workflows_total_count{prometheus=~\"^$dc$\",namespace=~\"$ns\",phase!~\"(Error|Failed)\"})[1m:1m]) > 0 -\nincrease(sum by (prometheus, namespace, phase) (argo_workflows_total_count{prometheus=~\"^$dc$\",namespace=~\"$ns\",phase!~\"(Error|Failed)\"})[1m:1m] offset 1h)",
@@ -376,7 +376,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -462,7 +462,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -507,7 +507,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -593,7 +593,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -611,7 +611,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -697,7 +697,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -716,7 +716,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -803,7 +803,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -822,7 +822,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -908,7 +908,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -927,7 +927,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1014,7 +1014,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -1046,7 +1046,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1098,7 +1098,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1117,7 +1117,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1168,7 +1168,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1187,7 +1187,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1274,7 +1274,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "expr": "increase(sum by (prometheus, namespace, phase, name) (argo_workflows_workflowtemplate_triggered_total{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m]) > 0 unless\nincrease(sum by (prometheus, namespace, phase, name) (argo_workflows_workflowtemplate_triggered_total{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m] offset 1d)\nor\nincrease(sum by (prometheus, namespace, phase, name) (argo_workflows_workflowtemplate_triggered_total{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m]) > 0 -\nincrease(sum by (prometheus, namespace, phase, name) (argo_workflows_workflowtemplate_triggered_total{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m] offset 1d)",
@@ -1293,7 +1293,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1380,7 +1380,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -1411,7 +1411,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1462,7 +1462,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1481,7 +1481,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1532,7 +1532,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1551,7 +1551,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1638,7 +1638,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "expr": "increase(sum by (prometheus, namespace, phase, name) (argo_workflows_clusterworkflowtemplate_triggered_total{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m]) > 0 unless\nincrease(sum by (prometheus, namespace, phase, name) (argo_workflows_clusterworkflowtemplate_triggered_total{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m] offset 1d)\nor\nincrease(sum by (prometheus, namespace, phase, name) (argo_workflows_clusterworkflowtemplate_triggered_total{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m]) > 0 -\nincrease(sum by (prometheus, namespace, phase, name) (argo_workflows_clusterworkflowtemplate_triggered_total{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m] offset 1d)",
@@ -1670,7 +1670,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1721,7 +1721,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1753,7 +1753,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -1864,7 +1864,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -1879,7 +1879,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "expr": "increase(sum by (prometheus, namespace) (argo_workflows_pod_pending_count{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m]) > 0 unless\nincrease(sum by (prometheus, namespace) (argo_workflows_pod_pending_count{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m] offset 1d)\nor\nincrease(sum by (prometheus, namespace) (argo_workflows_pod_pending_count{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m]) > 0 -\nincrease(sum by (prometheus, namespace) (argo_workflows_pod_pending_count{prometheus=~\"^$dc$\",namespace=~\"$ns\"})[1m:1m] offset 1d)",
@@ -1898,7 +1898,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "fieldConfig": {
@@ -1952,7 +1952,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_THANOS}"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1971,7 +1971,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_THANOS}"
+            "uid": "prometheus"
           },
           "description": "",
           "gridPos": {
@@ -2007,7 +2007,7 @@ data:
             "current": {},
             "datasource": {
               "type": "prometheus",
-              "uid": "${DS_THANOS}"
+              "uid": "prometheus"
             },
             "definition": "label_values(argo_workflows_total_count,prometheus)",
             "description": "Kubernetes Cluster",
@@ -2036,7 +2036,7 @@ data:
             "current": {},
             "datasource": {
               "type": "prometheus",
-              "uid": "${DS_THANOS}"
+              "uid": "prometheus"
             },
             "definition": "label_values(argo_workflows_total_count{prometheus=~\"^$dc$\"},namespace)",
             "description": "Workflow Controller Namespace",
