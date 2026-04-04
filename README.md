@@ -7,6 +7,8 @@ Two parallel workstreams:
 - **Microservices** — three Spring Boot REST services for customer account management
 
 Full architecture is documented in [`architecture-plan-v2.md`](architecture-plan-v2.md) (Russian).
+Microservices architecture and Spring Cloud plan: [`docs/microservices-architecture.md`](docs/microservices-architecture.md).
+Observability stack documentation: [`docs/monitoring-dashboards.md`](docs/monitoring-dashboards.md).
 AI assistant instructions are in [`CLAUDE.md`](CLAUDE.md).
 
 ---
@@ -17,12 +19,18 @@ AI assistant instructions are in [`CLAUDE.md`](CLAUDE.md).
 batch-app/          Multi-module Maven monorepo (Java — not yet implemented)
 services/           Spring Boot microservices (not yet implemented)
 workflow/           Argo Workflows DAG templates (not yet implemented)
+monitoring/         Grafana dashboards, Prometheus ServiceMonitors
+  dashboards/       ConfigMap-based Grafana dashboard provisioning
 infrastructure/
   namespaces.yaml   Kubernetes namespace definitions
-  helm-values/      Helm values files for the monitoring stack
+  helm-values/      Helm values files for the observability stack
 config/
   batch-tuning.yaml Central ConfigMap — all batch tuning parameters
 scripts/            Windows PowerShell setup scripts (see below)
+docs/
+  microservices-architecture.md  Spring Cloud services plan (phases, versions, Initializr)
+  monitoring-dashboards.md       Grafana/Prometheus stack documentation
+  setup.md                       Local environment setup notes
 ```
 
 ---
@@ -244,12 +252,15 @@ management.otlp.metrics.export.url: http://localhost:4318/v1/metrics
 
 | Phase | Status | Description |
 |-------|--------|-------------|
-| 1. Infrastructure | **Done** | All install scripts, observability stack, Kubernetes configs |
-| 2. Microservices | Planned | customer-service, account-service, transaction-service |
-| 3. GitHub Actions | Planned | CI pipelines (build, test, push image) |
-| 4. Helm + Argo CD | Planned | Deploy services via GitOps |
-| 5. Monitoring | Planned | Micrometer instrumentation, Grafana dashboards, k6 load tests |
+| 1. Infrastructure | **Done** | All install scripts, Kubernetes configs |
+| 2. Observability | **Done** | Prometheus, Grafana, Loki, Tempo, OTel Collector, 6 dashboards |
+| 3. Microservices MVP | Next | config-server + customer / account / transaction services (Spring Boot 4, Spring Cloud 2025.1) |
+| 4. Observability for services | Planned | Micrometer instrumentation, distributed tracing, service Grafana dashboards |
+| 5. API Gateway | Planned | Spring Cloud Gateway, rate limiting, circuit breakers at edge |
+| 6. CI/CD | Planned | GitHub Actions (path-based per service) + Argo CD GitOps |
+| 7. Batch system | Planned | Spring Batch worker, Argo Workflows DAG, Pushgateway metrics |
 
+Architecture decisions for Phase 3: [`docs/microservices-architecture.md`](docs/microservices-architecture.md).
 See `CLAUDE.md` for full architecture details.
 
 ---
