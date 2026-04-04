@@ -1,0 +1,19 @@
+# Service для экспозиции метрик workflow-controller внутри кластера.
+# workflow-controller слушает на порту 9090 (container port name: metrics),
+# но по умолчанию нет Service — Prometheus его не видит.
+apiVersion: v1
+kind: Service
+metadata:
+  name: argo-workflow-controller-metrics
+  namespace: argo
+  labels:
+    app: workflow-controller
+spec:
+  clusterIP: None   # headless — нам нужен только DNS-резолв и scrape, не балансировка
+  selector:
+    app: workflow-controller
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP

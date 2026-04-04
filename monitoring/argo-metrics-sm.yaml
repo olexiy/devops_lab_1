@@ -1,0 +1,21 @@
+# ServiceMonitor — говорит Prometheus-оператору скрапировать argo-workflow-controller-metrics.
+# Лейбл release=kube-prometheus-stack обязателен: именно по нему Prometheus-инстанс
+# отбирает ServiceMonitor-ы (spec.serviceMonitorSelector.matchLabels).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argo-workflow-controller-metrics
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - argo
+  selector:
+    matchLabels:
+      app: workflow-controller
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
