@@ -1,0 +1,436 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: project-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  project-overview.json: |
+    {
+      "title": "Project Overview",
+      "uid": "project-overview-v1",
+      "description": "Cluster health, Argo Workflows, Argo CD and databases at a glance",
+      "tags": ["overview", "cluster", "argo", "databases"],
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "graphTooltip": 1,
+      "timezone": "browser",
+      "panels": [
+
+        {
+          "id": 1, "type": "row", "title": "☸ Cluster Health",
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 2, "type": "stat", "title": "Nodes",
+          "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "blue" },
+              "mappings": [],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "count(kube_node_info)", "legendFormat": "Nodes", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 3, "type": "stat", "title": "Pods Running",
+          "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "green" },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "count(kube_pod_status_phase{phase=\"Running\"})", "legendFormat": "Running", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 4, "type": "stat", "title": "Pods Pending / Failed",
+          "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 3 }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "count(kube_pod_status_phase{phase=~\"Pending|Failed|Unknown\"}) or vector(0)", "legendFormat": "Not Running", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 5, "type": "gauge", "title": "CPU Usage",
+          "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 60 },
+                  { "color": "red", "value": 85 }
+                ]
+              },
+              "unit": "percent",
+              "min": 0, "max": 100
+            }
+          },
+          "targets": [{ "expr": "round((1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * 100, 0.1)", "legendFormat": "CPU %", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 6, "type": "gauge", "title": "Memory Usage",
+          "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 70 },
+                  { "color": "red", "value": 90 }
+                ]
+              },
+              "unit": "percent",
+              "min": 0, "max": 100
+            }
+          },
+          "targets": [{ "expr": "round((1 - sum(node_memory_MemAvailable_bytes) / sum(node_memory_MemTotal_bytes)) * 100, 0.1)", "legendFormat": "Memory %", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 10, "type": "row", "title": "⚙ Argo Workflows",
+          "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 11, "type": "stat", "title": "Running",
+          "gridPos": { "x": 0, "y": 6, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "blue", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "sum(argo_workflows_gauge{phase=\"Running\"}) or vector(0)", "legendFormat": "Running", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 12, "type": "stat", "title": "Succeeded",
+          "gridPos": { "x": 6, "y": 6, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "green" },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "sum(argo_workflows_gauge{phase=\"Succeeded\"}) or vector(0)", "legendFormat": "Succeeded", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 13, "type": "stat", "title": "Failed / Error",
+          "gridPos": { "x": 12, "y": 6, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "sum(argo_workflows_gauge{phase=~\"Failed|Error\"}) or vector(0)", "legendFormat": "Failed/Error", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 14, "type": "stat", "title": "Workers Busy",
+          "gridPos": { "x": 18, "y": 6, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "blue" },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "sum(argo_workflows_workers_busy_count) or vector(0)", "legendFormat": "Busy", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 20, "type": "row", "title": "🚀 Argo CD",
+          "gridPos": { "x": 0, "y": 10, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 21, "type": "stat", "title": "ArgoCD Server",
+          "gridPos": { "x": 0, "y": 11, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [
+                { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } },
+                { "type": "special", "options": { "match": "null", "result": { "text": "DOWN", "color": "red" } } }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "sum(kube_pod_status_phase{namespace=\"argocd\", pod=~\"argocd-server.*\", phase=\"Running\"})", "legendFormat": "argocd-server", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 22, "type": "stat", "title": "App Controller",
+          "gridPos": { "x": 6, "y": 11, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [
+                { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } },
+                { "type": "special", "options": { "match": "null", "result": { "text": "DOWN", "color": "red" } } }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "sum(kube_pod_status_phase{namespace=\"argocd\", pod=~\"argocd-application-controller.*\", phase=\"Running\"})", "legendFormat": "app-controller", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 23, "type": "stat", "title": "Apps Synced",
+          "gridPos": { "x": 12, "y": 11, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "green" },
+              "unit": "short",
+              "noValue": "No apps yet"
+            }
+          },
+          "targets": [{ "expr": "count(argocd_app_info{sync_status=\"Synced\"}) or vector(0)", "legendFormat": "Synced", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 24, "type": "stat", "title": "Apps OutOfSync",
+          "gridPos": { "x": 18, "y": 11, "w": 6, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              },
+              "unit": "short",
+              "noValue": "No apps yet"
+            }
+          },
+          "targets": [{ "expr": "count(argocd_app_info{sync_status!=\"Synced\"}) or vector(0)", "legendFormat": "OutOfSync", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 30, "type": "row", "title": "🗄 Databases",
+          "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 31, "type": "stat", "title": "MySQL (source-db)",
+          "gridPos": { "x": 0, "y": 16, "w": 4, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [
+                { "type": "value", "options": { "1": { "text": "UP", "color": "green" }, "0": { "text": "DOWN", "color": "red" } } }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "mysql_up", "legendFormat": "MySQL", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 32, "type": "gauge", "title": "MySQL Connections",
+          "gridPos": { "x": 4, "y": 16, "w": 8, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 50 },
+                  { "color": "red", "value": 80 }
+                ]
+              },
+              "unit": "percent",
+              "min": 0, "max": 100
+            }
+          },
+          "targets": [{ "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections * 100", "legendFormat": "Connections %", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 33, "type": "stat", "title": "MySQL QPS",
+          "gridPos": { "x": 12, "y": 16, "w": 4, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "blue" },
+              "unit": "reqps",
+              "decimals": 1
+            }
+          },
+          "targets": [{ "expr": "rate(mysql_global_status_queries[1m])", "legendFormat": "QPS", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 34, "type": "stat", "title": "PostgreSQL (target-db)",
+          "gridPos": { "x": 0, "y": 20, "w": 4, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [
+                { "type": "value", "options": { "1": { "text": "UP", "color": "green" }, "0": { "text": "DOWN", "color": "red" } } }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "targets": [{ "expr": "pg_up", "legendFormat": "PostgreSQL", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 35, "type": "gauge", "title": "PostgreSQL Connections",
+          "gridPos": { "x": 4, "y": 20, "w": 8, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 50 },
+                  { "color": "red", "value": 80 }
+                ]
+              },
+              "unit": "percent",
+              "min": 0, "max": 100
+            }
+          },
+          "targets": [{ "expr": "sum(pg_stat_activity_count{datname!=\"\"}) / sum(pg_settings_max_connections) * 100", "legendFormat": "Connections %", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 36, "type": "stat", "title": "PG Cache Hit Ratio",
+          "gridPos": { "x": 12, "y": 20, "w": 4, "h": 4 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "yellow", "value": 90 },
+                  { "color": "green", "value": 99 }
+                ]
+              },
+              "unit": "percent",
+              "decimals": 1
+            }
+          },
+          "targets": [{ "expr": "sum(rate(pg_stat_bgwriter_buffers_clean_total[5m])) / (sum(rate(pg_stat_bgwriter_buffers_clean_total[5m])) + sum(rate(pg_stat_bgwriter_buffers_backend_total[5m])) + 1) * 100 or vector(0)", "legendFormat": "Cache Hit %", "refId": "A" }],
+          "datasource": { "type": "prometheus", "uid": "" }
+        }
+
+      ]
+    }
