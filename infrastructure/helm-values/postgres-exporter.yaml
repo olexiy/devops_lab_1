@@ -1,6 +1,6 @@
 # prometheus-postgres-exporter values
 # Chart: prometheus-community/prometheus-postgres-exporter 7.5.2 (app v0.19.1)
-# Скрапирует target-db (PostgreSQL 16) в namespace databases
+# Scrapes target-db (PostgreSQL 16) in the databases namespace
 
 config:
   datasource:
@@ -14,7 +14,7 @@ config:
 serviceMonitor:
   enabled: true
   labels:
-    release: kube-prometheus-stack   # обязательно — Prometheus отбирает SM по этому лейблу
+    release: kube-prometheus-stack   # required — Prometheus selects ServiceMonitors by this label
   interval: 30s
 
 resources:

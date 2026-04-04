@@ -1,4 +1,4 @@
-# ВАЖНО: этот ConfigMap > 256KB, поэтому применять только через server-side apply:
+# IMPORTANT: this ConfigMap is > 256KB, so it must be applied with server-side apply:
 #   kubectl apply --server-side -f monitoring/dashboards/node-exporter-full.cm.yaml
 apiVersion: v1
 data:

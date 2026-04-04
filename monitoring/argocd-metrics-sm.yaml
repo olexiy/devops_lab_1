@@ -1,5 +1,5 @@
-# ServiceMonitor для ArgoCD.
-# argocd-metrics:8082      — application controller (app health, sync status)
+# ServiceMonitors for ArgoCD.
+# argocd-metrics:8082       — application controller (app health, sync status)
 # argocd-server-metrics:8083 — ArgoCD API server
 ---
 apiVersion: monitoring.coreos.com/v1

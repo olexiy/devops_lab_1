@@ -1,6 +1,6 @@
 # prometheus-mysql-exporter values
 # Chart: prometheus-community/prometheus-mysql-exporter 2.13.0 (app v0.19.0)
-# Скрапирует source-db (MySQL 8.3) в namespace databases
+# Scrapes source-db (MySQL 8.3) in the databases namespace
 
 mysql:
   host: source-db.databases.svc.cluster.local
@@ -12,7 +12,7 @@ mysql:
 serviceMonitor:
   enabled: true
   additionalLabels:
-    release: kube-prometheus-stack   # обязательно — Prometheus отбирает SM по этому лейблу
+    release: kube-prometheus-stack   # required — Prometheus selects ServiceMonitors by this label
   interval: 30s
 
 resources:

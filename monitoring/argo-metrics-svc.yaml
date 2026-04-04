@@ -1,6 +1,6 @@
-# Service для экспозиции метрик workflow-controller внутри кластера.
-# workflow-controller слушает на порту 9090 (container port name: metrics),
-# но по умолчанию нет Service — Prometheus его не видит.
+# Exposes workflow-controller metrics inside the cluster.
+# workflow-controller listens on port 9090 (container port name: metrics),
+# but no Service exists by default — Prometheus cannot reach it.
 apiVersion: v1
 kind: Service
 metadata:
@@ -9,7 +9,7 @@ metadata:
   labels:
     app: workflow-controller
 spec:
-  clusterIP: None   # headless — нам нужен только DNS-резолв и scrape, не балансировка
+  clusterIP: None   # headless — we only need DNS resolution and scraping, not load balancing
   selector:
     app: workflow-controller
   ports:

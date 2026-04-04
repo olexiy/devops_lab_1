@@ -1,6 +1,6 @@
-# ServiceMonitor — говорит Prometheus-оператору скрапировать argo-workflow-controller-metrics.
-# Лейбл release=kube-prometheus-stack обязателен: именно по нему Prometheus-инстанс
-# отбирает ServiceMonitor-ы (spec.serviceMonitorSelector.matchLabels).
+# Tells the Prometheus operator to scrape argo-workflow-controller-metrics.
+# The label release=kube-prometheus-stack is required: the Prometheus instance
+# selects ServiceMonitors by spec.serviceMonitorSelector.matchLabels.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -21,4 +21,4 @@ spec:
       path: /metrics
       scheme: https
       tlsConfig:
-        insecureSkipVerify: true   # self-signed cert в Argo Workflows
+        insecureSkipVerify: true   # workflow-controller uses a self-signed TLS cert
