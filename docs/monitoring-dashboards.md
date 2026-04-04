@@ -37,7 +37,28 @@ and calls `POST /api/admin/provisioning/dashboards/reload`. The dashboard appear
 ### How to Add a Custom Dashboard
 
 1. Export the JSON from Grafana UI (Share → Export → Save to file) or download from grafana.com.
-2. Create a file `monitoring/dashboards/<name>.cm.yaml`:
+
+2. **If downloaded from grafana.com — fix the datasource references first.**
+   Dashboards from grafana.com contain an `__inputs` block at the top with placeholder variables
+   like `${DS_PROMETHEUS}` or `${DS_THANOS}`. Grafana substitutes these during a normal UI import
+   (it shows a "select datasource" dialog). When loading via ConfigMap sidecar, no substitution
+   happens — all panels show `!` errors and "No data".
+
+   Check what inputs the dashboard has:
+   ```bash
+   head -30 dashboard.json   # look for "__inputs" block
+   ```
+   Then replace the placeholder with the actual datasource uid. Our Prometheus uid is `prometheus`:
+   ```bash
+   sed 's/\${DS_PROMETHEUS}/prometheus/g' dashboard.json > dashboard-fixed.json
+   sed 's/\${DS_THANOS}/prometheus/g'    dashboard.json > dashboard-fixed.json
+   ```
+   To find the uid of any datasource: Grafana UI → Connections → Data sources → click the source → check the URL (`/datasources/edit/<uid>`), or:
+   ```bash
+   curl -s http://admin:admin@localhost:3000/api/datasources | grep -o '"uid":"[^"]*"\|"name":"[^"]*"'
+   ```
+
+3. Create a file `monitoring/dashboards/<name>.cm.yaml`:
 
 ```yaml
 apiVersion: v1
