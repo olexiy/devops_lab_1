@@ -1,0 +1,367 @@
+openapi: "3.0.3"
+info:
+  title: Customer Service API
+  description: |
+    Manages customer master data for the batch-rating mini-bank project.
+    This is the leaf service — no upstream dependencies.
+    See docs/banking-app-concept.md for the overall system context.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8081
+    description: Local development (direct)
+  - url: http://localhost:8080
+    description: Via API Gateway (Phase 2)
+
+tags:
+  - name: Customers
+    description: Customer lifecycle management
+
+paths:
+
+  /api/v1/customers:
+    post:
+      tags: [Customers]
+      operationId: createCustomer
+      summary: Create a new customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRequest'
+      responses:
+        "201":
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [Customers]
+      operationId: listCustomers
+      summary: List customers (paginated)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, BLOCKED, CLOSED]
+        - name: lastName
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+      responses:
+        "200":
+          description: Page of customers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCustomerResponse'
+
+  /api/v1/customers/{id}:
+    get:
+      tags: [Customers]
+      operationId: getCustomerById
+      summary: Get customer by ID
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        "200":
+          description: Customer found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Customers]
+      operationId: updateCustomer
+      summary: Full update of customer data
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRequest'
+      responses:
+        "200":
+          description: Customer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          description: Email already in use by another customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Customers]
+      operationId: deleteCustomer
+      summary: Soft delete — sets status to CLOSED
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        "204":
+          description: Customer closed
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/customers/{id}/status:
+    patch:
+      tags: [Customers]
+      operationId: updateCustomerStatus
+      summary: Change customer status
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerStatusRequest'
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/customers/email/{email}:
+    get:
+      tags: [Customers]
+      operationId: getCustomerByEmail
+      summary: Get customer by email address
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+            maxLength: 255
+      responses:
+        "200":
+          description: Customer found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+components:
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    SizeParam:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+    SortParam:
+      name: sort
+      in: query
+      required: false
+      description: "Field and direction, e.g. 'lastName,asc' or 'createdAt,desc'"
+      schema:
+        type: string
+        example: "createdAt,desc"
+
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+
+    CustomerRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - email
+        - dateOfBirth
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Anna"
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Müller"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "anna.mueller@example.com"
+        phone:
+          type: string
+          maxLength: 30
+          example: "+49 30 1234567"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1985-04-12"
+
+    CustomerStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, BLOCKED, CLOSED]
+
+    CustomerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        firstName:
+          type: string
+          example: "Anna"
+        lastName:
+          type: string
+          example: "Müller"
+        email:
+          type: string
+          format: email
+          example: "anna.mueller@example.com"
+        phone:
+          type: string
+          example: "+49 30 1234567"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1985-04-12"
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, BLOCKED, CLOSED]
+          example: "ACTIVE"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-01-15T09:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-03-01T14:22:00Z"
+
+    PageCustomerResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageMetadata:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 1250
+        totalPages:
+          type: integer
+          example: 63
+        last:
+          type: boolean
+          example: false
+
+    ErrorResponse:
+      type: object
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+        - path
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 404
+        error:
+          type: string
+          example: "Not Found"
+        message:
+          type: string
+          example: "Customer with id 42 not found"
+        path:
+          type: string
+          example: "/api/v1/customers/42"
