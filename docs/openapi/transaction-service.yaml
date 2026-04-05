@@ -1,0 +1,506 @@
+openapi: "3.0.3"
+info:
+  title: Transaction Service API
+  description: |
+    Records immutable financial transactions on accounts.
+    Upstream dependency: account-service (validates account and updates balance on each transaction).
+    Also exposes the batch endpoint GET /api/v1/external-score/{customerId}.
+    Transactions cannot be modified or deleted — reversals create a new opposite transaction.
+    See docs/banking-app-concept.md for the overall system context.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8083
+    description: Local development (direct)
+  - url: http://localhost:8080
+    description: Via API Gateway (Phase 2)
+
+tags:
+  - name: Transactions
+    description: Immutable financial transaction records
+  - name: Batch
+    description: Endpoints consumed by the nightly batch-worker
+
+paths:
+
+  /api/v1/transactions:
+    post:
+      tags: [Transactions]
+      operationId: createTransaction
+      summary: Record a new transaction
+      description: |
+        Validates the account via account-service, computes balance_after, persists the transaction,
+        then patches the account balance. If account-service is unreachable, returns 503.
+        The reference_number is server-generated (UUID) — do not supply it in the request.
+        To avoid duplicate transactions on retry, check GET /api/v1/transactions/reference/{ref} first.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        "201":
+          description: Transaction recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: Insufficient funds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "503":
+          description: account-service unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [Transactions]
+      operationId: listTransactions
+      summary: List all transactions (paginated)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: transactionType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CREDIT, DEBIT, TRANSFER_IN, TRANSFER_OUT, FEE]
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2026-01-01"
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2026-03-31"
+      responses:
+        "200":
+          description: Page of transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageTransactionResponse'
+
+  /api/v1/transactions/{id}:
+    get:
+      tags: [Transactions]
+      operationId: getTransactionById
+      summary: Get transaction by internal ID
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        "200":
+          description: Transaction found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/transactions/reference/{referenceNumber}:
+    get:
+      tags: [Transactions]
+      operationId: getTransactionByReference
+      summary: Get transaction by reference number (UUID)
+      description: |
+        Used for idempotency checks — query this before creating a transaction
+        to avoid duplicates on retry.
+      parameters:
+        - name: referenceNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "200":
+          description: Transaction found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/transactions/account/{accountId}:
+    get:
+      tags: [Transactions]
+      operationId: getTransactionsByAccount
+      summary: List transactions for a specific account (paginated)
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: transactionType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CREDIT, DEBIT, TRANSFER_IN, TRANSFER_OUT, FEE]
+      responses:
+        "200":
+          description: Page of transactions for the account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageTransactionResponse'
+
+  /api/v1/transactions/customer/{customerId}:
+    get:
+      tags: [Transactions]
+      operationId: getTransactionsByCustomer
+      summary: List all transactions for a customer across all accounts (paginated)
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Page of transactions for the customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageTransactionResponse'
+
+  /api/v1/external-score/{customerId}:
+    get:
+      tags: [Batch]
+      operationId: getExternalScore
+      summary: Derived credit score from 12-month transaction behaviour
+      description: |
+        Consumed by the nightly batch-worker during customer rating calculation.
+        Aggregates the last 12 months of transactions for the given customer and
+        returns a numeric score (0–1000) plus a letter grade (A–F).
+
+        Score to grade mapping:
+          850–1000 → A
+          700–849  → B
+          550–699  → C
+          400–549  → D
+          200–399  → E
+          0–199    → F
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        "200":
+          description: Credit score calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalScoreResponse'
+        "404":
+          description: No transactions found for this customer in the calculation window
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    SizeParam:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+    SortParam:
+      name: sort
+      in: query
+      required: false
+      description: "Field and direction, e.g. 'transactionDate,desc'"
+      schema:
+        type: string
+        example: "transactionDate,desc"
+
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+
+    TransactionRequest:
+      type: object
+      required:
+        - accountId
+        - customerId
+        - transactionType
+        - amount
+        - currency
+        - transactionDate
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 7
+        customerId:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 42
+          description: "Denormalized for batch queries — must match the account's owner"
+        transactionType:
+          type: string
+          enum: [CREDIT, DEBIT, TRANSFER_IN, TRANSFER_OUT, FEE]
+          example: "DEBIT"
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 250.00
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: "EUR"
+        description:
+          type: string
+          maxLength: 500
+          example: "Supermarket"
+        transactionDate:
+          type: string
+          format: date-time
+          description: "Business timestamp of the transaction (may differ from system created_at)"
+          example: "2026-04-05T14:30:00Z"
+
+    TransactionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1001
+        referenceNumber:
+          type: string
+          format: uuid
+          description: "UUID generated by the service — use for idempotency lookups"
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        accountId:
+          type: integer
+          format: int64
+          example: 7
+        customerId:
+          type: integer
+          format: int64
+          example: 42
+        transactionType:
+          type: string
+          enum: [CREDIT, DEBIT, TRANSFER_IN, TRANSFER_OUT, FEE]
+          example: "DEBIT"
+        amount:
+          type: number
+          format: double
+          example: 250.00
+        currency:
+          type: string
+          example: "EUR"
+        balanceAfter:
+          type: number
+          format: double
+          description: "Account balance snapshot immediately after this transaction"
+          example: 12095.67
+        description:
+          type: string
+          example: "Supermarket"
+        transactionDate:
+          type: string
+          format: date-time
+          example: "2026-04-05T14:30:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-04-05T14:30:01Z"
+
+    ExternalScoreResponse:
+      type: object
+      required:
+        - customerId
+        - score
+        - scoreGrade
+        - transactionCount
+        - windowMonths
+        - calculatedAt
+      properties:
+        customerId:
+          type: integer
+          format: int64
+          example: 42
+        score:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1000
+          description: "Numeric credit score derived from transaction behaviour"
+          example: 742.5
+        scoreGrade:
+          type: string
+          enum: [A, B, C, D, E, F]
+          description: |
+            Letter grade derived from the numeric score:
+            A (850–1000), B (700–849), C (550–699), D (400–549), E (200–399), F (0–199)
+          example: "B"
+        transactionCount:
+          type: integer
+          description: "Number of transactions in the calculation window"
+          example: 147
+        windowMonths:
+          type: integer
+          default: 12
+          description: "Size of the look-back window in months"
+          example: 12
+        calculatedAt:
+          type: string
+          format: date-time
+          example: "2026-04-05T02:15:00Z"
+
+    PageTransactionResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageMetadata:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 2340
+        totalPages:
+          type: integer
+          example: 117
+        last:
+          type: boolean
+          example: false
+
+    ErrorResponse:
+      type: object
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+        - path
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 404
+        error:
+          type: string
+          example: "Not Found"
+        message:
+          type: string
+          example: "Account with id 7 not found"
+        path:
+          type: string
+          example: "/api/v1/transactions"

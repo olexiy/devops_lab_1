@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: customer-service
+  config:
+    import: "optional:configserver:http://config-server:8888"
+  datasource:
+    url: jdbc:mysql://localhost:3307/customers_db
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: 1.0

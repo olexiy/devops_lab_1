@@ -1,0 +1,547 @@
+openapi: "3.0.3"
+info:
+  title: Account Service API
+  description: |
+    Manages bank accounts per customer.
+    Upstream dependency: customer-service (validates customer before opening account).
+    Also exposes the batch endpoint GET /api/v1/average-balance/{customerId}.
+    See docs/banking-app-concept.md for the overall system context.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8082
+    description: Local development (direct)
+  - url: http://localhost:8080
+    description: Via API Gateway (Phase 2)
+
+tags:
+  - name: Accounts
+    description: Bank account management
+  - name: Batch
+    description: Endpoints consumed by the nightly batch-worker
+
+paths:
+
+  /api/v1/accounts:
+    post:
+      tags: [Accounts]
+      operationId: createAccount
+      summary: Open a new account for a customer
+      description: |
+        Validates that the customer exists by calling customer-service before persisting.
+        The account_number is server-generated — do not supply it in the request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountRequest'
+      responses:
+        "201":
+          description: Account opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "503":
+          description: customer-service unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [Accounts]
+      operationId: listAccounts
+      summary: List accounts (paginated)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: customerId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, FROZEN, CLOSED]
+        - name: accountType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CHECKING, SAVINGS, CREDIT, DEPOSIT]
+      responses:
+        "200":
+          description: Page of accounts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageAccountResponse'
+
+  /api/v1/accounts/{id}:
+    get:
+      tags: [Accounts]
+      operationId: getAccountById
+      summary: Get account by ID
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        "200":
+          description: Account found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Accounts]
+      operationId: updateAccount
+      summary: Full metadata update of account
+      description: Updates mutable fields only. balance, account_number, customer_id, and open_date cannot be changed via this endpoint.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountUpdateRequest'
+      responses:
+        "200":
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Accounts]
+      operationId: deleteAccount
+      summary: Soft delete — sets status to CLOSED
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        "204":
+          description: Account closed
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/accounts/{id}/status:
+    patch:
+      tags: [Accounts]
+      operationId: updateAccountStatus
+      summary: Change account status (freeze or close)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountStatusRequest'
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/accounts/{id}/balance:
+    patch:
+      tags: [Accounts]
+      operationId: updateAccountBalance
+      summary: Update account balance — INTERNAL endpoint, called only by transaction-service
+      description: |
+        **Not exposed via the API Gateway.**
+        Called by transaction-service after persisting a new transaction.
+        This endpoint must not be reachable from the public internet.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BalanceUpdateRequest'
+      responses:
+        "200":
+          description: Balance updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          description: Insufficient funds (DEBIT would result in negative balance beyond credit_limit)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/accounts/number/{accountNumber}:
+    get:
+      tags: [Accounts]
+      operationId: getAccountByNumber
+      summary: Get account by account number (business key)
+      parameters:
+        - name: accountNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 20
+      responses:
+        "200":
+          description: Account found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/accounts/customer/{customerId}:
+    get:
+      tags: [Accounts]
+      operationId: getAccountsByCustomer
+      summary: List all accounts for a specific customer
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        "200":
+          description: Page of accounts for the customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageAccountResponse'
+
+  /api/v1/average-balance/{customerId}:
+    get:
+      tags: [Batch]
+      operationId: getAverageBalance
+      summary: Average balance across all active accounts for a customer
+      description: |
+        Consumed by the nightly batch-worker during the customer rating calculation.
+        Aggregates balance across all ACTIVE accounts for the given customer.
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        "200":
+          description: Average balance data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AverageBalanceResponse'
+        "404":
+          description: No active accounts found for this customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    SizeParam:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+    SortParam:
+      name: sort
+      in: query
+      required: false
+      description: "Field and direction, e.g. 'openDate,desc'"
+      schema:
+        type: string
+        example: "openDate,desc"
+
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+
+    AccountRequest:
+      type: object
+      required:
+        - customerId
+        - accountType
+        - currency
+        - openDate
+      properties:
+        customerId:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 42
+        accountType:
+          type: string
+          enum: [CHECKING, SAVINGS, CREDIT, DEPOSIT]
+          example: "CHECKING"
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: "EUR"
+        creditLimit:
+          type: number
+          format: double
+          minimum: 0
+          description: "Required for CREDIT account type; must be null for others"
+          example: 5000.00
+        openDate:
+          type: string
+          format: date
+          example: "2026-01-15"
+
+    AccountUpdateRequest:
+      type: object
+      properties:
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: "EUR"
+        creditLimit:
+          type: number
+          format: double
+          minimum: 0
+          description: "Only applicable to CREDIT accounts"
+
+    AccountStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, FROZEN, CLOSED]
+
+    BalanceUpdateRequest:
+      type: object
+      required:
+        - amount
+        - operation
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 250.00
+        operation:
+          type: string
+          enum: [CREDIT, DEBIT]
+          example: "DEBIT"
+        description:
+          type: string
+          maxLength: 255
+
+    AccountResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 7
+        accountNumber:
+          type: string
+          example: "ACC-20260115-000007"
+        customerId:
+          type: integer
+          format: int64
+          example: 42
+        accountType:
+          type: string
+          enum: [CHECKING, SAVINGS, CREDIT, DEPOSIT]
+          example: "CHECKING"
+        status:
+          type: string
+          enum: [ACTIVE, FROZEN, CLOSED]
+          example: "ACTIVE"
+        currency:
+          type: string
+          example: "EUR"
+        balance:
+          type: number
+          format: double
+          example: 12345.67
+        creditLimit:
+          type: number
+          format: double
+          example: null
+        openDate:
+          type: string
+          format: date
+          example: "2026-01-15"
+        closeDate:
+          type: string
+          format: date
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-01-15T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-03-20T08:45:00Z"
+
+    AverageBalanceResponse:
+      type: object
+      required:
+        - customerId
+        - averageBalance
+        - currency
+        - accountCount
+        - calculatedAt
+      properties:
+        customerId:
+          type: integer
+          format: int64
+          example: 42
+        averageBalance:
+          type: number
+          format: double
+          description: "Mean balance across all ACTIVE accounts"
+          example: 8750.50
+        currency:
+          type: string
+          description: "Currency of the primary account (EUR if mixed currencies)"
+          example: "EUR"
+        accountCount:
+          type: integer
+          description: "Number of ACTIVE accounts included in the average"
+          example: 3
+        calculatedAt:
+          type: string
+          format: date-time
+          example: "2026-04-05T02:15:00Z"
+
+    PageAccountResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageMetadata:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 87
+        totalPages:
+          type: integer
+          example: 5
+        last:
+          type: boolean
+          example: false
+
+    ErrorResponse:
+      type: object
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+        - path
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 404
+        error:
+          type: string
+          example: "Not Found"
+        message:
+          type: string
+          example: "Account with id 7 not found"
+        path:
+          type: string
+          example: "/api/v1/accounts/7"
