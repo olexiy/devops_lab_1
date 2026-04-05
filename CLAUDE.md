@@ -9,7 +9,7 @@ Two parallel workstreams sharing the same Kubernetes cluster and observability s
 1. **Batch system** — nightly recalculation of customer reliability ratings (30–50 million records, ~2-hour SLA). Spring Batch + Argo Workflows.
 2. **Microservices** — three Spring Boot headless REST services for customer account management. Primary learning vehicle for monitoring, distributed tracing, Spring Cloud, and GitOps.
 
-**Current state**: Architectural design phase. Infrastructure scripts and configs exist; Java implementation is not yet written. The authoritative design reference is `architecture-plan-v2.md` (written in Russian).
+**Current state**: Implementation phase started. Infrastructure scripts and configs exist. Full documentation layer complete (OpenAPI specs, service docs, banking concept). `customer-service` scaffold is done — Spring Boot 4.0.5, pom.xml, Flyway migration V1, Testcontainers test passing. `account-service` and `transaction-service` not yet started. The authoritative design reference is `architecture-plan-v2.md` (written in Russian).
 
 ## Version Policy
 
@@ -58,7 +58,7 @@ Orchestrated by Argo Workflows as a DAG:
 
 ```
 CronWorkflow (daily 2 AM Berlin)
-  → Init Pod       — Flyway validation, health checks, data cleanup
+  → Init Pod       — health checks, data cleanup
   → Partitioner    — NTILE-based scan → 50 JSON partition descriptors {minId, maxId, recordCount}
   → Worker Pods    — 50 partitions, max 6 concurrent; each runs a Spring Batch job
   → Report Pod     — Aggregated stats and notifications
@@ -71,7 +71,7 @@ Each module produces a separate Docker image with independent JVM tuning:
 | Module | Role | JVM |
 |---|---|---|
 | `batch-core` | Shared entities, configs, utilities | — |
-| `batch-init` | Flyway, health checks, cleanup | SerialGC |
+| `batch-init` | Health checks, data cleanup | SerialGC |
 | `batch-partitioner` | NTILE query, outputs partition JSON | SerialGC |
 | `batch-worker` | Spring Batch Reader → Processor → Writer | ZGC |
 | `batch-report` | Final report | SerialGC |
@@ -108,7 +108,7 @@ transaction-service → account-service → customer-service
 | `account-service` | Bank accounts per customer; calls customer-service to validate customer |
 | `transaction-service` | Transactions per account; calls account-service to validate account and update balance |
 
-The account-service and transaction-service also serve as the real implementations of the HTTP endpoints that `batch-worker` calls (`/api/v1/average-balance`, `/api/v1/external-score`), replacing the original mock stubs.
+The account-service and transaction-service also serve as the real implementations of the HTTP endpoints that `batch-worker` calls (`/api/v1/average-balance`, `/api/v1/external-score`).
 
 ### Databases
 
@@ -116,7 +116,12 @@ The account-service and transaction-service also serve as the real implementatio
 - **Target**: PostgreSQL 16 (`customer_ratings`, `rating_processing_dlq`, `rating_processing_progress`)
 - **Job Repository**: PostgreSQL (same instance as target)
 - UPSERT: `INSERT ON CONFLICT` for PostgreSQL, `INSERT ON DUPLICATE KEY UPDATE` for MySQL
-- Flyway migrations: `services/flyway/mysql/` and `services/flyway/postgresql/`
+
+**Schema ownership:**
+- Each microservice owns its schema via embedded Flyway (`src/main/resources/db/migration/`)
+- `customer-service` owns `customers`; `account-service` owns `accounts`; `transaction-service` owns `transactions`
+- Batch owns only its PostgreSQL tables (`customer_ratings`, `rating_processing_dlq`, `rating_processing_progress`) — managed via `spring.batch.jdbc.initialize-schema` and its own Flyway migrations in `batch-init`
+- Batch reads from MySQL (microservices' tables) but never migrates or modifies them
 
 ### Central Batch Configuration
 

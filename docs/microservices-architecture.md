@@ -4,7 +4,7 @@
 
 | Component | Version | Notes |
 |---|---|---|
-| Java | **21** | LTS; virtual threads (Project Loom) |
+| Java | **25** | LTS (released September 2025); virtual threads (Project Loom) |
 | Spring Boot | **4.0.5** | Current stable, March 2026 |
 | Spring Cloud | **2025.1.2** | Compatible with Boot 4.0.x |
 | Spring Cloud Gateway | **5.0.1** | Ships with Spring Cloud 2025.1 |
@@ -208,23 +208,23 @@ The only real drawback of a monorepo is at very large scale (thousands of servic
 
 ## Spring Initializr — What to Select
 
-Go to [start.spring.io](https://start.spring.io), set **Spring Boot 4.0.5**, **Java 21**, packaging **Jar**.
+Go to [start.spring.io](https://start.spring.io), set **Spring Boot 4.0.5**, **Java 25**, packaging **Jar**.
 
 ### customer-service
 
-| Dependency | Starter |
-|---|---|
-| Spring Web | `spring-boot-starter-web` |
-| Spring Data JPA | `spring-boot-starter-data-jpa` |
-| Flyway Migration | `flyway-core` |
-| Spring Boot Actuator | `spring-boot-starter-actuator` |
-| Config Client | `spring-cloud-starter-config` |
-| OpenFeign | `spring-cloud-starter-openfeign` |
-| Resilience4j | `spring-cloud-starter-circuitbreaker-resilience4j` |
-| Validation | `spring-boot-starter-validation` |
-| MySQL Driver | `mysql-connector-j` |
-| Micrometer Prometheus | `micrometer-registry-prometheus` |
-| Micrometer OTLP | `micrometer-registry-otlp` |
+| Dependency | Initializr name | Starter |
+|---|---|---|
+| Spring Web | Spring Web | `spring-boot-starter-web` |
+| Spring Data JPA | Spring Data JPA | `spring-boot-starter-data-jpa` |
+| Flyway Migration | Flyway Migration | `flyway-core` |
+| Spring Boot Actuator | Spring Boot Actuator | `spring-boot-starter-actuator` |
+| Config Client | Config Client | `spring-cloud-starter-config` |
+| OpenFeign | OpenFeign | `spring-cloud-starter-openfeign` |
+| Resilience4j | Resilience4j | `spring-cloud-starter-circuitbreaker-resilience4j` |
+| Validation | Validation | `spring-boot-starter-validation` |
+| MySQL Driver | MySQL Driver | `mysql-connector-j` |
+| Prometheus metrics | **Prometheus** | `micrometer-registry-prometheus` |
+| OTel tracing + OTLP export | **OpenTelemetry** | `micrometer-tracing-bridge-otel` + `opentelemetry-exporter-otlp` |
 
 > OpenFeign is listed here for consistency but customer-service has no upstream calls in Phase 1.
 > Add it anyway — you will need it once you add health-check calls or integrate with batch endpoints.
@@ -252,8 +252,8 @@ Same as `customer-service`. OpenFeign is needed from day 1 (calls account-servic
 | Spring Boot Actuator | `spring-boot-starter-actuator` |
 | Config Client | `spring-cloud-starter-config` |
 | Resilience4j | `spring-cloud-starter-circuitbreaker-reactor-resilience4j` |
-| Micrometer Prometheus | `micrometer-registry-prometheus` |
-| Micrometer OTLP | `micrometer-registry-otlp` |
+| **Prometheus** | `micrometer-registry-prometheus` |
+| **OpenTelemetry** | `micrometer-tracing-bridge-otel` + `opentelemetry-exporter-otlp` |
 
 > Gateway is reactive (WebFlux-based). Do **not** add `Spring Web` (MVC) — they conflict.
 
@@ -396,3 +396,13 @@ POST /api/transactions
 Every OpenFeign call has a circuit breaker. If `customer-service` is down,
 `account-service` opens the circuit and returns a fallback — `transaction-service`
 does not cascade-fail, it receives the fallback and can decide whether to proceed or reject.
+
+---
+
+## OpenAPI-First
+
+All three services follow an OpenAPI-first approach: the YAML spec is written first, and a Maven plugin generates the Spring controller interface from it. The developer implements the interface — the compiler enforces that spec and implementation stay in sync.
+
+- **Specs:** `docs/openapi/customer-service.yaml`, `account-service.yaml`, `transaction-service.yaml`
+- **Per-service docs** (role + DB schema): `docs/services/`
+- **Full workflow + Maven plugin config:** [docs/openapi-first.md](openapi-first.md)
