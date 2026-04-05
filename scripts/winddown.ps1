@@ -99,16 +99,42 @@ foreach ($ns in $namespaces) {
 }
 
 #
-# 3. Summary
+# 3. Stop Docker Desktop
+#
+Write-Host ""
+Write-Host "=== Stopping Docker Desktop ==="
+$dockerExe = "$env:ProgramFiles\Docker\Docker\Docker Desktop.exe"
+
+# Step 1: kill UI + backend first so nothing can respawn the VM
+Write-Host "Stopping Docker Desktop processes..."
+try { taskkill /F /IM "Docker Desktop.exe"    *> $null } catch {}
+try { taskkill /F /IM "com.docker.backend.exe" *> $null } catch {}
+try { taskkill /F /IM "docker-agent.exe"       *> $null } catch {}
+Start-Sleep -Seconds 3
+
+# Step 2: terminate WSL2 VMs (docker-desktop = Kubernetes RAM, Ubuntu = user distro)
+Write-Host "Terminating WSL2 VMs..."
+try { wsl --terminate docker-desktop 2>&1 | Out-Null } catch {}
+try { wsl --terminate Ubuntu         2>&1 | Out-Null } catch {}
+
+Start-Sleep -Seconds 2
+$remaining = Get-Process "Docker Desktop" -ErrorAction SilentlyContinue
+if ($remaining) {
+    Write-Host "WARNING: Docker Desktop respawned. Kill manually from system tray if needed."
+} else {
+    Write-Host "Docker Desktop fully stopped."
+}
+
+#
+# 4. Summary
 #
 Write-Host ""
 Write-Host "========================================"
 Write-Host "Winddown complete."
 Write-Host "========================================"
 Write-Host ""
-Write-Host "All workloads scaled to 0. Port-forwards stopped."
+Write-Host "All workloads scaled to 0. Docker Desktop stopped."
 Write-Host "Data preserved - PersistentVolumes and Secrets are untouched."
-Write-Host "DaemonSets (node-exporter, promtail) remain running (cannot scale to 0)."
 Write-Host ""
 Write-Host "To restore: run startup.ps1"
 Write-Host ""

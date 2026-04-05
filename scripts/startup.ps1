@@ -96,7 +96,54 @@ Write-Host "========================================"
 Write-Host ""
 
 #
-# 1. Validate namespaces
+# 1. Start Docker Desktop and wait for Kubernetes
+#
+Write-Host "=== Docker Desktop ==="
+$dockerExe = "$env:ProgramFiles\Docker\Docker\Docker Desktop.exe"
+
+# Check if Docker daemon is actually functional (not just if UI process exists)
+try { docker info *> $null } catch {}
+$dockerFunctional = ($LASTEXITCODE -eq 0)
+
+if (-not $dockerFunctional) {
+    # Kill any zombie UI processes left from winddown, then start fresh
+    $zombies = Get-Process "Docker Desktop" -ErrorAction SilentlyContinue
+    if ($zombies) {
+        Write-Host "Cleaning up zombie Docker Desktop processes..."
+        taskkill /F /IM "Docker Desktop.exe" *> $null
+        Start-Sleep -Seconds 2
+    }
+    Write-Host "Starting Docker Desktop..."
+    Start-Process $dockerExe
+} else {
+    Write-Host "Docker Desktop is already running and functional."
+}
+
+Write-Host "Waiting for Docker daemon..."
+$waited = 0
+do {
+    Start-Sleep -Seconds 4
+    $waited += 4
+    try { docker info *> $null } catch {}
+} while ($LASTEXITCODE -ne 0 -and $waited -lt 120)
+
+if ($LASTEXITCODE -ne 0) { throw "Docker daemon did not become ready within 120s" }
+Write-Host "Docker daemon ready. ($waited s)"
+
+Write-Host "Waiting for Kubernetes node..."
+$waited = 0
+do {
+    Start-Sleep -Seconds 5
+    $waited += 5
+    try { $nodes = (kubectl get nodes --no-headers 2>$null) -join "" } catch { $nodes = "" }
+} while (($nodes -notmatch "Ready") -and $waited -lt 180)
+
+if ($nodes -notmatch "Ready") { throw "Kubernetes did not become ready within 180s" }
+Write-Host "Kubernetes ready. ($waited s)"
+Write-Host ""
+
+#
+# 2. Validate namespaces
 #
 Write-Host "=== Checking namespaces ==="
 $missing = @()
