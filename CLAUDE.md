@@ -9,7 +9,7 @@ Two parallel workstreams sharing the same Kubernetes cluster and observability s
 1. **Batch system** — nightly recalculation of customer reliability ratings (30–50 million records, ~2-hour SLA). Spring Batch + Argo Workflows.
 2. **Microservices** — three Spring Boot headless REST services for customer account management. Primary learning vehicle for monitoring, distributed tracing, Spring Cloud, and GitOps.
 
-**Current state**: Implementation phase started. Infrastructure scripts and configs exist. Full documentation layer complete (OpenAPI specs, service docs, banking concept). `customer-service` scaffold is done — Spring Boot 4.0.5, pom.xml, Flyway migration V1, Testcontainers test passing. `account-service` and `transaction-service` not yet started. The authoritative design reference is `architecture-plan-v2.md` (written in Russian).
+**Current state**: `customer-service` — MVP complete, 16 integration tests green. `account-service` — MVP complete, 13 integration tests green. `transaction-service` — not yet started. The authoritative design reference is `architecture-plan-v2.md` (written in Russian).
 
 ## Version Policy
 
@@ -148,6 +148,103 @@ All tuning in `config/batch-tuning.yaml` (Kubernetes ConfigMap):
 | node-exporter | Node-level infrastructure metrics |
 
 Installed via `./scripts/install-monitoring.ps1`. Load testing with k6.
+
+## Spring Boot 4 + Spring Cloud 2025 — Known Breaking Changes
+
+This project uses Spring Boot 4.0.x. The API breaks from Boot 3.x are significant. Apply these rules immediately — do not discover them by trial and error.
+
+### Jackson 3.x (group ID changed)
+- Old: `com.fasterxml.jackson.databind.DeserializationFeature`
+- New: `tools.jackson.databind.DeserializationFeature`
+- Old: `org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer`
+- New: `org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer` (accepts `tools.jackson` builder)
+
+```java
+import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
+import tools.jackson.databind.DeserializationFeature;
+
+@Bean
+public JsonMapperBuilderCustomizer bigDecimalDeserializer() {
+    return builder -> builder.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+}
+```
+
+### Test infrastructure removed
+- `@AutoConfigureMockMvc` — **removed**. Use `MockMvcBuilders.webAppContextSetup(wac).build()` in `@BeforeEach`.
+- `TestRestTemplate` — **removed**. Use MockMvc exclusively.
+- Canonical test pattern:
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@Testcontainers
+class MyControllerIT {
+    @Autowired WebApplicationContext wac;
+    MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
+    }
+}
+```
+
+### Maven Surefire — IT tests excluded by default
+Surefire 3.x only runs `*Test.java` and `*Tests.java` by default. Add `*IT.java` explicitly:
+
+```xml
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-surefire-plugin</artifactId>
+    <configuration>
+        <includes>
+            <include>**/*Tests.java</include>
+            <include>**/*Test.java</include>
+            <include>**/*IT.java</include>
+        </includes>
+    </configuration>
+</plugin>
+```
+
+### WireMock static import conflict with MockMvc
+`import static com.github.tomakehurst.wiremock.client.WireMock.*` conflicts with MockMvc static imports (`get`, `post`, `patch`, `contentType`). Always use explicit `WireMock.get(...)`, `WireMock.urlPathEqualTo(...)` — no wildcard WireMock static import.
+
+### WireMock fixed port (not dynamic)
+Use fixed port matching `application.yaml` instead of `@DynamicPropertySource`. With `@Nested` test classes, the Spring context starts before `@RegisterExtension` fires, causing `@DynamicPropertySource` to arrive too late.
+
+```yaml
+# src/test/resources/application.yaml
+upstream-service:
+  url: http://localhost:9876   # matches WireMock fixed port below
+```
+
+```java
+@RegisterExtension
+static WireMockExtension wireMock = WireMockExtension.newInstance()
+        .options(wireMockConfig().port(9876))
+        .build();
+```
+
+### Java version
+All services use `<java.version>21</java.version>`. Java 25 is not supported by the installed JDK.
+
+### Unnamed variable `_` is preview in Java 21
+Use a named variable: `.ifPresent(existing -> { throw ...; })` — not `.ifPresent(_ -> ...)`.
+
+### Datasource URL — always include timezone
+```yaml
+url: jdbc:mysql://localhost:3306/mydb?serverTimezone=UTC
+```
+
+### OpenFeign — FeignException not auto-mapped
+Without a circuit breaker, raw `FeignException.ServiceUnavailable` (HTTP 503) from upstream propagates as 500. Add a handler to `GlobalExceptionHandler`:
+
+```java
+@ExceptionHandler(FeignException.class)
+ResponseEntity<ErrorResponse> handleFeignException(FeignException ex, HttpServletRequest req) {
+    HttpStatus status = ex instanceof FeignException.NotFound ? HttpStatus.NOT_FOUND : HttpStatus.SERVICE_UNAVAILABLE;
+    return buildError(status, "Upstream service error: " + ex.getMessage(), req.getRequestURI());
+}
+```
 
 ## Platform Notes
 
