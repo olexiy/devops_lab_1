@@ -10,6 +10,7 @@ import de.olexiy.devopsplayground.demo.account_service.exception.*;
 import de.olexiy.devopsplayground.demo.account_service.mapper.AccountMapper;
 import de.olexiy.devopsplayground.demo.account_service.repository.AccountRepository;
 import feign.FeignException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import java.util.Map;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class AccountService {
 
     private static final Map<String, String> SORT_FIELDS = Map.of(
@@ -36,15 +38,6 @@ public class AccountService {
     private final AccountMapper mapper;
     private final AccountNumberGenerator numberGenerator;
     private final CustomerServiceClient customerClient;
-
-    public AccountService(AccountRepository repository, AccountMapper mapper,
-                          AccountNumberGenerator numberGenerator,
-                          CustomerServiceClient customerClient) {
-        this.repository = repository;
-        this.mapper = mapper;
-        this.numberGenerator = numberGenerator;
-        this.customerClient = customerClient;
-    }
 
     public AccountResponse create(AccountRequest request) {
         validateCustomer(request.getCustomerId());

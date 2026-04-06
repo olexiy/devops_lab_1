@@ -3,19 +3,17 @@ package de.olexiy.devopsplayground.demo.account_service.controller;
 import com.bank.account.api.ApiApi;
 import com.bank.account.model.*;
 import de.olexiy.devopsplayground.demo.account_service.service.AccountService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 
 @RestController
+@RequiredArgsConstructor
 public class AccountController implements ApiApi {
 
     private final AccountService service;
-
-    public AccountController(AccountService service) {
-        this.service = service;
-    }
 
     @Override
     public ResponseEntity<AccountResponse> createAccount(AccountRequest request) {
