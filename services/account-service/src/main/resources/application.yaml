@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: account-service
+  config:
+    import: "optional:configserver:http://config-server:8888"
+  datasource:
+    url: jdbc:mysql://localhost:3307/accounts_db?serverTimezone=UTC
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  threads:
+    virtual:
+      enabled: true
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
+customer-service:
+  url: ${CUSTOMER_SERVICE_URL:http://localhost:8081}
+
+server:
+  port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      customer-service:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+  retry:
+    instances:
+      customer-service:
+        maxAttempts: 3
+        waitDuration: 500ms
+  timelimiter:
+    instances:
+      customer-service:
+        timeoutDuration: 3s

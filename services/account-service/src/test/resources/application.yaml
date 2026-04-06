@@ -1,0 +1,18 @@
+spring:
+  config:
+    import: "optional:configserver:"
+  flyway:
+    enabled: true
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: false
+
+customer-service:
+  url: http://localhost:9876
+
+resilience4j:
+  retry:
+    instances:
+      customer-service:
+        maxAttempts: 1
