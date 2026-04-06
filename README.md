@@ -11,6 +11,9 @@ Microservices architecture and Spring Cloud plan: [`docs/microservices-architect
 Observability stack documentation: [`docs/monitoring-dashboards.md`](docs/monitoring-dashboards.md).
 AI assistant instructions are in [`CLAUDE.md`](CLAUDE.md).
 
+A Spring Boot 4 coding skill for Claude Code is published separately:
+[olexiy/spring-coder-skill](https://github.com/olexiy/spring-coder-skill) — install with `claude plugins add github:olexiy/spring-coder-skill`
+
 ---
 
 ## Repository layout
