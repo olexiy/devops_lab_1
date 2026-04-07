@@ -9,7 +9,7 @@ Two parallel workstreams sharing the same Kubernetes cluster and observability s
 1. **Batch system** — nightly recalculation of customer reliability ratings (30–50 million records, ~2-hour SLA). Spring Batch + Argo Workflows.
 2. **Microservices** — three Spring Boot headless REST services for customer account management. Primary learning vehicle for monitoring, distributed tracing, Spring Cloud, and GitOps.
 
-**Current state**: `customer-service` — MVP complete, 16 integration tests green. `account-service` — MVP complete, 13 integration tests green. `transaction-service` — not yet started. The authoritative design reference is `architecture-plan-v2.md` (written in Russian).
+**Current state**: `customer-service` — MVP complete, 16 integration tests green. `account-service` — MVP complete, 13 integration tests green. `transaction-service` — MVP complete, 15 integration tests written (not yet run). The authoritative design reference is `architecture-plan-v2.md` (written in Russian).
 
 ## Version Policy
 
