@@ -86,7 +86,7 @@ public class CustomerService {
         repository.findByEmailAndIdNot(request.getEmail(), id)
                 .ifPresent(existing -> { throw new CustomerEmailConflictException(request.getEmail()); });
 
-        mapper.applyRequest(request, customer);
+        mapper.updateFromRequest(request, customer);
         return mapper.toResponse(repository.save(customer));
     }
 

@@ -30,7 +30,7 @@ public interface CustomerMapper {
     @Mapping(target = "status",    ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    void applyRequest(CustomerRequest req, @MappingTarget Customer entity);
+    void updateFromRequest(CustomerRequest req, @MappingTarget Customer entity);
 
     default CustomerResponse.StatusEnum toStatusEnum(CustomerStatus status) {
         return switch (status) {
