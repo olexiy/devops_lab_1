@@ -1,0 +1,198 @@
+### ── HEALTH ──────────────────────────────────────────────────────────────────
+
+### Health
+GET {{transactionServiceUrl}}/actuator/health
+
+
+### ── CREATE ──────────────────────────────────────────────────────────────────
+
+### Credit transaction  →  saves id and referenceNumber to variables
+### Requires: account with id=1 exists and is ACTIVE (run account-service.http first)
+# @name createCreditTransaction
+POST {{transactionServiceUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{
+  "accountId": 1,
+  "customerId": 1,
+  "transactionType": "CREDIT",
+  "amount": 2000.00,
+  "currency": "EUR",
+  "description": "Salary",
+  "transactionDate": "2026-04-08T09:00:00Z"
+}
+
+> {%
+  client.global.set("transactionId", response.body.id);
+  client.global.set("referenceNumber", response.body.referenceNumber);
+  client.test("201 Created", () => client.assert.response.status === 201);
+%}
+
+
+### Debit transaction
+POST {{transactionServiceUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{
+  "accountId": 1,
+  "customerId": 1,
+  "transactionType": "DEBIT",
+  "amount": 150.00,
+  "currency": "EUR",
+  "description": "Supermarket",
+  "transactionDate": "2026-04-08T12:30:00Z"
+}
+
+
+### Transfer out
+POST {{transactionServiceUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{
+  "accountId": 1,
+  "customerId": 1,
+  "transactionType": "TRANSFER_OUT",
+  "amount": 500.00,
+  "currency": "EUR",
+  "description": "Transfer to savings",
+  "transactionDate": "2026-04-08T14:00:00Z"
+}
+
+
+### Fee
+POST {{transactionServiceUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{
+  "accountId": 1,
+  "customerId": 1,
+  "transactionType": "FEE",
+  "amount": 9.99,
+  "currency": "EUR",
+  "description": "Monthly account fee",
+  "transactionDate": "2026-04-08T00:00:00Z"
+}
+
+
+### ── READ ────────────────────────────────────────────────────────────────────
+
+### Get transaction by ID
+GET {{transactionServiceUrl}}/api/v1/transactions/{{transactionId}}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+
+### Get transaction by reference number (UUID)
+GET {{transactionServiceUrl}}/api/v1/transactions/reference/{{referenceNumber}}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+
+### Get transaction — not found
+GET {{transactionServiceUrl}}/api/v1/transactions/99999
+
+> {%
+  client.test("404 Not Found", () => client.assert.response.status === 404);
+%}
+
+
+### List all transactions (paginated, newest first)
+GET {{transactionServiceUrl}}/api/v1/transactions?page=0&size=10&sort=transactionDate,desc
+
+
+### List transactions filtered by type
+GET {{transactionServiceUrl}}/api/v1/transactions?transactionType=CREDIT
+
+
+### List transactions filtered by date range
+GET {{transactionServiceUrl}}/api/v1/transactions?dateFrom=2026-04-01&dateTo=2026-04-30
+
+
+### Get transactions by account
+GET {{transactionServiceUrl}}/api/v1/transactions/account/1?page=0&size=10
+
+
+### Get transactions by account filtered by type
+GET {{transactionServiceUrl}}/api/v1/transactions/account/1?transactionType=DEBIT
+
+
+### Get transactions by customer (across all accounts)
+GET {{transactionServiceUrl}}/api/v1/transactions/customer/1?page=0&size=10
+
+
+### ── BATCH ENDPOINT ──────────────────────────────────────────────────────────
+
+### External credit score for customer (consumed by batch-worker)
+GET {{transactionServiceUrl}}/api/v1/external-score/1
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+  client.test("score in range", () => {
+    client.assert.response.body.score >= 0;
+    client.assert.response.body.score <= 1000;
+  });
+%}
+
+
+### External score — no transactions → 404
+GET {{transactionServiceUrl}}/api/v1/external-score/99999
+
+> {%
+  client.test("404 Not Found", () => client.assert.response.status === 404);
+%}
+
+
+### ── ERROR CASES ─────────────────────────────────────────────────────────────
+
+### Account not found → 404
+POST {{transactionServiceUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{
+  "accountId": 99999,
+  "customerId": 1,
+  "transactionType": "CREDIT",
+  "amount": 100.00,
+  "currency": "EUR",
+  "transactionDate": "2026-04-08T10:00:00Z"
+}
+
+> {%
+  client.test("404 Not Found", () => client.assert.response.status === 404);
+%}
+
+
+### Insufficient funds → 409
+POST {{transactionServiceUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{
+  "accountId": 1,
+  "customerId": 1,
+  "transactionType": "DEBIT",
+  "amount": 9999999.00,
+  "currency": "EUR",
+  "transactionDate": "2026-04-08T10:00:00Z"
+}
+
+> {%
+  client.test("409 Conflict", () => client.assert.response.status === 409);
+%}
+
+
+### Missing required field → 400
+POST {{transactionServiceUrl}}/api/v1/transactions
+Content-Type: application/json
+
+{
+  "accountId": 1,
+  "transactionType": "CREDIT"
+}
+
+> {%
+  client.test("400 Bad Request", () => client.assert.response.status === 400);
+%}

@@ -1,0 +1,133 @@
+### ── HEALTH ──────────────────────────────────────────────────────────────────
+
+### Health
+GET {{customerServiceUrl}}/actuator/health
+
+
+### ── CREATE ──────────────────────────────────────────────────────────────────
+
+### Create customer  →  saves id to customerId variable
+# @name createCustomer
+POST {{customerServiceUrl}}/api/v1/customers
+Content-Type: application/json
+
+{
+  "firstName": "Anna",
+  "lastName": "Muller",
+  "email": "anna@example.com",
+  "dateOfBirth": "1990-05-15",
+  "phone": "+49 30 1234567"
+}
+
+> {%
+  client.global.set("customerId", response.body.id);
+  client.test("201 Created", () => client.assert.response.status === 201);
+%}
+
+
+### ── READ ───────────────────────────────────────────────────────────────────
+
+### Get customer by ID
+GET {{customerServiceUrl}}/api/v1/customers/{{customerId}}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+
+### Get customer — not found
+GET {{customerServiceUrl}}/api/v1/customers/99999
+
+> {%
+  client.test("404 Not Found", () => client.assert.response.status === 404);
+%}
+
+
+### List customers (page 0, size 5, sorted by lastName)
+GET {{customerServiceUrl}}/api/v1/customers?page=0&size=5&sort=lastName,asc
+
+
+### List customers filtered by status
+GET {{customerServiceUrl}}/api/v1/customers?status=ACTIVE
+
+
+### List customers filtered by lastName
+GET {{customerServiceUrl}}/api/v1/customers?lastName=Muller
+
+
+### ── UPDATE ──────────────────────────────────────────────────────────────────
+
+### Full update (PUT)
+PUT {{customerServiceUrl}}/api/v1/customers/{{customerId}}
+Content-Type: application/json
+
+{
+  "firstName": "Anna",
+  "lastName": "Muller",
+  "email": "anna@example.com",
+  "dateOfBirth": "1990-05-15",
+  "phone": "+49 89 9876543"
+}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+
+### Change status → BLOCKED
+PATCH {{customerServiceUrl}}/api/v1/customers/{{customerId}}/status
+Content-Type: application/json
+
+{
+  "status": "BLOCKED"
+}
+
+
+### Change status → ACTIVE
+PATCH {{customerServiceUrl}}/api/v1/customers/{{customerId}}/status
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+
+### ── DELETE ──────────────────────────────────────────────────────────────────
+
+### Delete (soft — sets status to CLOSED)
+DELETE {{customerServiceUrl}}/api/v1/customers/{{customerId}}
+
+> {%
+  client.test("204 No Content", () => client.assert.response.status === 204);
+%}
+
+
+### ── ERROR CASES ─────────────────────────────────────────────────────────────
+
+### Duplicate email → 409
+POST {{customerServiceUrl}}/api/v1/customers
+Content-Type: application/json
+
+{
+  "firstName": "Clone",
+  "lastName": "User",
+  "email": "anna@example.com",
+  "dateOfBirth": "2000-01-01"
+}
+
+> {%
+  client.test("409 Conflict", () => client.assert.response.status === 409);
+%}
+
+
+### Missing required field → 400
+POST {{customerServiceUrl}}/api/v1/customers
+Content-Type: application/json
+
+{
+  "firstName": "NoEmail"
+}
+
+> {%
+  client.test("400 Bad Request", () => client.assert.response.status === 400);
+%}

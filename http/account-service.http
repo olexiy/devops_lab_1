@@ -1,0 +1,198 @@
+### ── HEALTH ──────────────────────────────────────────────────────────────────
+
+### Health
+GET {{accountServiceUrl}}/actuator/health
+
+
+### ── CREATE ──────────────────────────────────────────────────────────────────
+
+### Create account  →  saves id and accountNumber to variables
+### Requires: customer with id=1 exists and is ACTIVE (run customer-service.http first)
+# @name createAccount
+POST {{accountServiceUrl}}/api/v1/accounts
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "accountType": "CHECKING",
+  "currency": "EUR",
+  "openDate": "2026-04-08"
+}
+
+> {%
+  client.global.set("accountId", response.body.id);
+  client.global.set("accountNumber", response.body.accountNumber);
+  client.test("201 Created", () => client.assert.response.status === 201);
+%}
+
+
+### Create savings account
+POST {{accountServiceUrl}}/api/v1/accounts
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "accountType": "SAVINGS",
+  "currency": "EUR",
+  "openDate": "2026-04-08"
+}
+
+
+### Create credit account (with credit limit)
+POST {{accountServiceUrl}}/api/v1/accounts
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "accountType": "CREDIT",
+  "currency": "EUR",
+  "creditLimit": 5000.00,
+  "openDate": "2026-04-08"
+}
+
+
+### ── READ ───────────────────────────────────────────────────────────────────
+
+### Get account by ID
+GET {{accountServiceUrl}}/api/v1/accounts/{{accountId}}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+
+### Get account by account number
+GET {{accountServiceUrl}}/api/v1/accounts/number/{{accountNumber}}
+
+
+### Get accounts by customer ID
+GET {{accountServiceUrl}}/api/v1/accounts/customer/1
+
+
+### List all accounts (paginated)
+GET {{accountServiceUrl}}/api/v1/accounts?page=0&size=10
+
+
+### List accounts filtered by status and type
+GET {{accountServiceUrl}}/api/v1/accounts?status=ACTIVE&accountType=CHECKING
+
+
+### Get account — not found
+GET {{accountServiceUrl}}/api/v1/accounts/99999
+
+> {%
+  client.test("404 Not Found", () => client.assert.response.status === 404);
+%}
+
+
+### ── UPDATE ──────────────────────────────────────────────────────────────────
+
+### Full metadata update (PUT)
+PUT {{accountServiceUrl}}/api/v1/accounts/{{accountId}}
+Content-Type: application/json
+
+{
+  "currency": "USD"
+}
+
+
+### Change status → FROZEN
+PATCH {{accountServiceUrl}}/api/v1/accounts/{{accountId}}/status
+Content-Type: application/json
+
+{
+  "status": "FROZEN"
+}
+
+
+### Change status → ACTIVE
+PATCH {{accountServiceUrl}}/api/v1/accounts/{{accountId}}/status
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+
+### Credit balance (INTERNAL — called by transaction-service)
+PATCH {{accountServiceUrl}}/api/v1/accounts/{{accountId}}/balance
+Content-Type: application/json
+
+{
+  "amount": 1000.00,
+  "operation": "CREDIT"
+}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+
+### Debit balance
+PATCH {{accountServiceUrl}}/api/v1/accounts/{{accountId}}/balance
+Content-Type: application/json
+
+{
+  "amount": 200.00,
+  "operation": "DEBIT"
+}
+
+
+### Debit exceeds balance → 409
+PATCH {{accountServiceUrl}}/api/v1/accounts/{{accountId}}/balance
+Content-Type: application/json
+
+{
+  "amount": 999999.00,
+  "operation": "DEBIT"
+}
+
+> {%
+  client.test("409 Conflict", () => client.assert.response.status === 409);
+%}
+
+
+### ── DELETE ──────────────────────────────────────────────────────────────────
+
+### Close account (soft delete)
+DELETE {{accountServiceUrl}}/api/v1/accounts/{{accountId}}
+
+> {%
+  client.test("204 No Content", () => client.assert.response.status === 204);
+%}
+
+
+### ── BATCH ENDPOINT ──────────────────────────────────────────────────────────
+
+### Average balance for customer (consumed by batch-worker)
+GET {{accountServiceUrl}}/api/v1/average-balance/1
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+
+### Average balance — no active accounts → 404
+GET {{accountServiceUrl}}/api/v1/average-balance/99999
+
+> {%
+  client.test("404 Not Found", () => client.assert.response.status === 404);
+%}
+
+
+### ── ERROR CASES ─────────────────────────────────────────────────────────────
+
+### Customer not found → 404
+POST {{accountServiceUrl}}/api/v1/accounts
+Content-Type: application/json
+
+{
+  "customerId": 99999,
+  "accountType": "CHECKING",
+  "currency": "EUR",
+  "openDate": "2026-04-08"
+}
+
+> {%
+  client.test("404 Not Found", () => client.assert.response.status === 404);
+%}
