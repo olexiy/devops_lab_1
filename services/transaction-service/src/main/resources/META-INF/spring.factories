@@ -1,0 +1,2 @@
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+  de.olexiy.devopsplayground.demo.transaction_service.diagnostics.DbConnectionFailureAnalyzer
