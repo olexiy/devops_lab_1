@@ -9,8 +9,18 @@ $namespaces = @("databases", "argo", "argocd", "monitoring")
 # HELPERS
 #
 function Stop-AllPortForwards {
-    Write-Host "Stopping all kubectl port-forward processes..."
+    # Clean up any leftover PortForward-* scheduled tasks from previous script versions
+    $tasks = Get-ScheduledTask -TaskName "PortForward-*" -ErrorAction SilentlyContinue
+    if ($tasks) {
+        Write-Host "Cleaning up leftover scheduled tasks..."
+        foreach ($t in $tasks) {
+            Stop-ScheduledTask  -TaskName $t.TaskName -ErrorAction SilentlyContinue
+            Unregister-ScheduledTask -TaskName $t.TaskName -Confirm:$false -ErrorAction SilentlyContinue
+            Write-Host "  Removed task: $($t.TaskName)"
+        }
+    }
 
+    Write-Host "Stopping all kubectl port-forward processes..."
     $procs = Get-CimInstance Win32_Process |
         Where-Object {
             $_.Name -eq "kubectl.exe" -and
@@ -20,7 +30,7 @@ function Stop-AllPortForwards {
     if ($procs) {
         foreach ($p in $procs) {
             Write-Host "  Stopping PID $($p.ProcessId)"
-            Stop-Process -Id $p.ProcessId -Force
+            Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
         }
         Write-Host "  Stopped $($procs.Count) process(es)."
     } else {
@@ -90,7 +100,39 @@ Write-Host "=== Port-forwards ==="
 Stop-AllPortForwards
 
 #
-# 2. Scale down each namespace
+# 2. Stop microservice processes (started by start-services.ps1)
+#
+Write-Host ""
+Write-Host "=== Microservices ==="
+$javaPids = Get-CimInstance Win32_Process |
+    Where-Object {
+        $_.Name -eq "java.exe" -and
+        $_.CommandLine -match "spring-boot"
+    }
+if ($javaPids) {
+    foreach ($p in $javaPids) {
+        Write-Host "  Stopping PID $($p.ProcessId)"
+        Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    Write-Host "  Stopped $($javaPids.Count) service(s)."
+} else {
+    Write-Host "  No microservice processes found."
+}
+
+#
+# 3. Stop MySQL (Docker Compose)
+#
+Write-Host ""
+Write-Host "=== MySQL (Docker Compose) ==="
+$composeFile = Join-Path $PSScriptRoot "..\services\docker-compose.yml"
+if (Test-Path $composeFile) {
+    docker compose -f $composeFile down 2>&1 | ForEach-Object { Write-Host "  $_" }
+} else {
+    Write-Host "  docker-compose.yml not found - skipping."
+}
+
+#
+# 4. Scale down each namespace
 #
 foreach ($ns in $namespaces) {
     Write-Host ""
@@ -99,7 +141,7 @@ foreach ($ns in $namespaces) {
 }
 
 #
-# 3. Stop Docker Desktop
+# 5. Stop Docker Desktop
 #
 Write-Host ""
 Write-Host "=== Stopping Docker Desktop ==="
@@ -126,7 +168,7 @@ if ($remaining) {
 }
 
 #
-# 4. Summary
+# 6. Summary
 #
 Write-Host ""
 Write-Host "========================================"

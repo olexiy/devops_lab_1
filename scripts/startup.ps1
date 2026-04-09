@@ -65,7 +65,7 @@ function Stop-PortForwardByPattern {
             $_.CommandLine -match $Pattern
         } |
         ForEach-Object {
-            Stop-Process -Id $_.ProcessId -Force
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
         }
 }
 
@@ -143,7 +143,32 @@ Write-Host "Kubernetes ready. ($waited s)"
 Write-Host ""
 
 #
-# 2. Validate namespaces
+# 2. Start databases via Docker Compose (MySQL + PostgreSQL)
+#
+Write-Host "=== Databases (Docker Compose) ==="
+$composeFile = (Resolve-Path "$PSScriptRoot\..\services\docker-compose.yml").Path
+docker compose -f $composeFile up -d db target-db
+if ($LASTEXITCODE -ne 0) { throw "Failed to start databases via Docker Compose" }
+
+Write-Host "Waiting for databases to be healthy..."
+$waited = 0
+do {
+    Start-Sleep -Seconds 3
+    $waited += 3
+    $mysqlHealth = (docker inspect --format='{{.State.Health.Status}}' services-db-1 2>$null)
+    $pgHealth    = (docker inspect --format='{{.State.Health.Status}}' services-target-db-1 2>$null)
+} while (($mysqlHealth -ne "healthy" -or $pgHealth -ne "healthy") -and $waited -lt 90)
+
+if ($mysqlHealth -eq "healthy" -and $pgHealth -eq "healthy") {
+    Write-Host "MySQL (localhost:3307) and PostgreSQL (localhost:5433) ready. ($waited s)"
+} else {
+    if ($mysqlHealth -ne "healthy") { Write-Host "WARNING: MySQL not healthy. Check: docker logs services-db-1" }
+    if ($pgHealth -ne "healthy")    { Write-Host "WARNING: PostgreSQL not healthy. Check: docker logs services-target-db-1" }
+}
+Write-Host ""
+
+#
+# 3. Validate namespaces
 #
 Write-Host "=== Checking namespaces ==="
 $missing = @()
@@ -168,7 +193,7 @@ if ($missing.Count -gt 0) {
 }
 
 #
-# 2. Scale up all namespaces
+# 4. Scale up all namespaces
 #
 foreach ($ns in @($nsDatabases, $nsArgo, $nsArgocd, $nsMonitoring)) {
     Write-Host ""
@@ -177,7 +202,7 @@ foreach ($ns in @($nsDatabases, $nsArgo, $nsArgocd, $nsMonitoring)) {
 }
 
 #
-# 3. Wait for critical rollouts
+# 5. Wait for critical rollouts
 #
 Write-Host ""
 Write-Host "=== Waiting for rollouts ==="
@@ -200,13 +225,10 @@ Wait-Rollout -Kind "statefulset" -Name "tempo"                                  
 Wait-Rollout -Kind "deployment"  -Name "opentelemetry-collector"                     -Namespace $nsMonitoring
 
 #
-# 4. Port-forwards
+# 6. Port-forwards (databases handled by Docker Compose above)
 #
 Write-Host ""
 Write-Host "=== Starting port-forwards ==="
-
-Start-PortForward -ServiceName "source-db" -Namespace $nsDatabases -PortMapping "3307:3306"
-Start-PortForward -ServiceName "target-db"  -Namespace $nsDatabases -PortMapping "5433:5432"
 
 Start-PortForward -ServiceName "argo-server"   -Namespace $nsArgo   -PortMapping "2746:2746"
 Start-PortForward -ServiceName "argocd-server" -Namespace $nsArgocd -PortMapping "8080:443"
@@ -220,7 +242,7 @@ Start-PortForward -ServiceName "tempo"                              -Namespace $
 Start-PortForward -ServiceName "opentelemetry-collector"            -Namespace $nsMonitoring -PortMapping "4317:4317 4318:4318"
 
 #
-# 5. Argo CD admin password (graceful if rotated)
+# 7. Argo CD admin password (graceful if rotated)
 #
 Write-Host ""
 $argoPwd = "<rotated - use your current password>"
@@ -235,7 +257,7 @@ try {
 } catch {}
 
 #
-# 6. Summary
+# 8. Summary
 #
 Write-Host "========================================"
 Write-Host "Infrastructure is up."
@@ -253,10 +275,13 @@ Write-Host "OTel Collector (gRPC)    localhost:4317"
 Write-Host "OTel Collector (HTTP)    http://localhost:4318"
 Write-Host "Argo Workflows           https://localhost:2746  (skip login)"
 Write-Host "Argo CD                  https://localhost:8080  (admin / $argoPwd)"
-Write-Host "MySQL source-db          localhost:3307"
-Write-Host "PostgreSQL target-db     localhost:5433"
+Write-Host "MySQL (Docker Compose)   localhost:3307  (appuser / apppassword)"
+Write-Host "PostgreSQL (Docker Comp) localhost:5433  (appuser / apppassword)"
 Write-Host ""
 Write-Host "Quick checks:"
 Write-Host "  Prometheus targets:  http://localhost:9090/targets"
 Write-Host "  Grafana datasources: http://localhost:3000/connections/datasources"
+Write-Host ""
+Write-Host "To start microservices:"
+Write-Host "  .\scripts\start-services.ps1"
 Write-Host ""

@@ -5,9 +5,14 @@ spring:
     import: "optional:configserver:http://config-server:8888"
   datasource:
     url: jdbc:mysql://localhost:3307/transactions_db?serverTimezone=UTC
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:root}
+    username: ${DB_USER:appuser}
+    password: ${DB_PASSWORD:apppassword}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 20000
+      initialization-fail-timeout: 60000
+      maximum-pool-size: 10
+      minimum-idle: 2
   jpa:
     hibernate:
       ddl-auto: validate

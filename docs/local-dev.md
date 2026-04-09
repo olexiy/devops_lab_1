@@ -7,59 +7,55 @@ Fastest way to manually test the three microservices without deploying to Kubern
 - Docker Desktop with Kubernetes enabled and running
 - `kubectl` in PATH
 - Java 21 (JDK)
-- `install-dbs.ps1` was executed at least once (creates the `source-db` MySQL deployment)
 
 ---
 
-## First-time setup
+## Daily workflow
 
-### 1. Create the microservice databases
-
-Run once (or after `install-dbs.ps1` wipes the namespace):
+### 1. Start infrastructure
 
 ```powershell
-.\scripts\setup-microservice-dbs.ps1
+.\scripts\startup.ps1
 ```
 
 This script:
-- Scales up `source-db` (MySQL 8.3) in the `databases` namespace
-- Creates `customers_db`, `accounts_db`, `transactions_db`
-- Grants `appuser` full access to all three
-- Starts a background port-forward `localhost:3307 → source-db:3306`
+- Starts Docker Desktop (if not running) and waits for Kubernetes
+- Starts **MySQL 8.3** and **PostgreSQL 16** via Docker Compose (ports 3307, 5433)
+- Scales up Kubernetes workloads (monitoring, Argo, Argo CD)
+- Starts port-forwards for Grafana, Prometheus, Argo, etc.
 
-### 2. Verify the databases exist
+Databases are created automatically on first start:
+- MySQL: `customers_db`, `accounts_db`, `transactions_db` (via `docker/mysql-init.sql`)
+- PostgreSQL: `appdb` (batch target, via `POSTGRES_DB` env var)
 
-```powershell
-kubectl exec -n databases deploy/source-db -- mysql -uroot -papppassword -e "SHOW DATABASES;" 2>$null
-```
-
-Expected output includes `accounts_db`, `customers_db`, `transactions_db`.
-
----
-
-## Running the services
-
-Open **three separate terminals** from the project root:
+### 2. Start microservices
 
 ```powershell
-# Terminal 1 — customer-service  (port 8081)
-cd services\customer-service
-.\mvnw.cmd spring-boot:run
-
-# Terminal 2 — account-service   (port 8082)
-cd services\account-service
-.\mvnw.cmd spring-boot:run
-
-# Terminal 3 — transaction-service (port 8083)
-cd services\transaction-service
-.\mvnw.cmd spring-boot:run
+.\scripts\start-services.ps1
 ```
 
-**Start order matters**: customer-service must be up before account-service, and
-account-service before transaction-service (Feign clients connect on startup probes).
-In practice a few seconds delay is enough; circuit breakers tolerate brief unavailability.
+This script:
+- Verifies MySQL is reachable on `localhost:3307`
+- Starts all three services as hidden background processes
+- Polls `/actuator/health` until all three are UP (timeout 150 s)
+- Logs go to `services/<name>/target/service.log` and `service-err.log`
 
-Flyway applies schema migrations (`V1__create_*.sql`) automatically on first start.
+**Start order** (hardcoded via 3 s stagger): customer-service -> account-service -> transaction-service.
+Flyway applies schema migrations automatically on first start.
+
+### 3. Shut down everything
+
+```powershell
+.\scripts\winddown.ps1
+```
+
+This script:
+- Kills port-forwards and microservice Java processes
+- Stops databases via `docker compose down`
+- Scales Kubernetes workloads to 0
+- Stops Docker Desktop and WSL2 VMs
+
+Data is preserved across restarts (Docker volumes + Kubernetes PersistentVolumes).
 
 ---
 
@@ -69,7 +65,7 @@ Flyway applies schema migrations (`V1__create_*.sql`) automatically on first sta
 # Create a customer
 $c = Invoke-RestMethod -Method Post -Uri http://localhost:8081/api/v1/customers `
      -ContentType "application/json" `
-     -Body '{"firstName":"Anna","lastName":"Müller","email":"anna@example.com","dateOfBirth":"1990-05-15","status":"ACTIVE"}'
+     -Body '{"firstName":"Anna","lastName":"Mueller","email":"anna@example.com","dateOfBirth":"1990-05-15","status":"ACTIVE"}'
 Write-Host "Customer id: $($c.id)"
 
 # Open an account for that customer
@@ -93,37 +89,46 @@ Invoke-RestMethod http://localhost:8082/api/v1/average-balance/$($c.id)
 
 ---
 
+## Alternative: Docker Compose for the full stack
+
+If you want to run services inside Docker too (no `mvnw` needed), build JARs first:
+
+```powershell
+cd services\customer-service    ; .\mvnw.cmd package -DskipTests ; cd ..\..
+cd services\account-service     ; .\mvnw.cmd package -DskipTests ; cd ..\..
+cd services\transaction-service ; .\mvnw.cmd package -DskipTests ; cd ..\..
+```
+
+Then start everything:
+
+```powershell
+cd services
+docker compose up -d
+```
+
+Services discover each other by container name (`http://customer-service:8081`, etc.).
+
+---
+
 ## Credentials reference
 
-| What              | Value                   |
-|-------------------|-------------------------|
-| MySQL host        | `localhost:3307`        |
-| MySQL user        | `appuser`               |
-| MySQL password    | `apppassword`           |
-| customer-service  | `http://localhost:8081` |
-| account-service   | `http://localhost:8082` |
+| What                | Value                   |
+|---------------------|-------------------------|
+| MySQL host          | `localhost:3307`        |
+| PostgreSQL host     | `localhost:5433`        |
+| DB user             | `appuser`               |
+| DB password         | `apppassword`           |
+| customer-service    | `http://localhost:8081` |
+| account-service     | `http://localhost:8082` |
 | transaction-service | `http://localhost:8083` |
 
 ---
 
-## Database teardown
-
-The `winddown.ps1` script scales **all** deployments to 0 (saves RAM when not working).
-The databases and schema are preserved — data survives restarts.
-
-To bring everything back up including monitoring:
+## Viewing service logs
 
 ```powershell
-.\scripts\startup.ps1
-# then re-run if port-forward was lost:
-.\scripts\setup-microservice-dbs.ps1
-```
-
-To wipe all data and start fresh:
-
-```powershell
-.\scripts\install-dbs.ps1          # recreates the namespace → erases all data
-.\scripts\setup-microservice-dbs.ps1  # re-creates microservice databases
+# Tail a service log
+Get-Content services\customer-service\target\service.log -Tail 50 -Wait
 ```
 
 ---
@@ -136,4 +141,16 @@ Tests use Testcontainers (spin up their own MySQL) — no external infrastructur
 cd services\customer-service    ; .\mvnw.cmd test
 cd services\account-service     ; .\mvnw.cmd test
 cd services\transaction-service ; .\mvnw.cmd test
+```
+
+---
+
+## Database teardown
+
+To wipe all data and start fresh:
+
+```powershell
+cd services
+docker compose down -v    # removes volumes — erases all data
+docker compose up -d db target-db   # recreates empty databases
 ```

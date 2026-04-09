@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -37,8 +38,8 @@ public class TransactionController implements ApiApi {
     }
 
     @Override
-    public ResponseEntity<TransactionResponse> getTransactionByReference(String referenceNumber) {
-        return ResponseEntity.ok(service.findByReference(referenceNumber));
+    public ResponseEntity<TransactionResponse> getTransactionByReference(UUID referenceNumber) {
+        return ResponseEntity.ok(service.findByReference(referenceNumber.toString()));
     }
 
     @Override

@@ -1,0 +1,142 @@
+# Docker Compose — local microservice stack (alternative to start-services.ps1)
+#
+# USAGE
+# -----
+# 1. Build JARs first (one time, or after code changes):
+#      cd services\customer-service    && .\mvnw.cmd package -DskipTests
+#      cd services\account-service     && .\mvnw.cmd package -DskipTests
+#      cd services\transaction-service && .\mvnw.cmd package -DskipTests
+#
+# 2. Start the stack:
+#      docker compose up          # foreground; Ctrl-C to stop
+#      docker compose up -d       # detached; docker compose down to stop
+#
+# 3. Smoke test (PowerShell):
+#      See docs/local-dev.md — smoke test section
+#
+# DIFFERENCES from running via start-services.ps1
+# -------------------------------------------------
+# - Uses its own MySQL container (port 3307 on host).
+#   No Kubernetes port-forward required.
+# - All services run inside Docker network; they reach each other by service name.
+# - OTel / Grafana / Prometheus are NOT included here — start the Kubernetes
+#   monitoring stack separately via startup.ps1 if you need observability.
+
+services:
+
+  # ---------------------------------------------------------------------------
+  db:
+    image: mysql:8.3
+    environment:
+      MYSQL_ROOT_PASSWORD: apppassword
+      MYSQL_USER:          appuser
+      MYSQL_PASSWORD:      apppassword
+      MYSQL_DATABASE:      customers_db     # init.sql creates the other two
+    volumes:
+      - ./docker/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - db-data:/var/lib/mysql
+    ports:
+      - "3307:3306"    # same port as the Kubernetes port-forward — credentials are identical
+    healthcheck:
+      test:         ["CMD", "mysqladmin", "ping", "-uappuser", "-papppassword"]
+      interval:     5s
+      timeout:      3s
+      retries:      30
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  target-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB:       appdb
+      POSTGRES_USER:     appuser
+      POSTGRES_PASSWORD: apppassword
+    volumes:
+      - target-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"    # same port as the Kubernetes port-forward
+    healthcheck:
+      test:         ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
+      interval:     5s
+      timeout:      3s
+      retries:      30
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  customer-service:
+    image: eclipse-temurin:21-jre
+    working_dir: /app
+    volumes:
+      - ./customer-service:/app
+    command: java -jar target/customer-service-0.0.1-SNAPSHOT.jar
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/customers_db?serverTimezone=UTC
+      DB_USER:               appuser
+      DB_PASSWORD:           apppassword
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:         ["CMD-SHELL", "curl -sf http://localhost:8081/actuator/health || exit 1"]
+      interval:     10s
+      timeout:      5s
+      retries:      15
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  account-service:
+    image: eclipse-temurin:21-jre
+    working_dir: /app
+    volumes:
+      - ./account-service:/app
+    command: java -jar target/account-service-0.0.1-SNAPSHOT.jar
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL:  jdbc:mysql://db:3306/accounts_db?serverTimezone=UTC
+      DB_USER:                appuser
+      DB_PASSWORD:            apppassword
+      CUSTOMER_SERVICE_URL:   http://customer-service:8081
+    depends_on:
+      db:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+    healthcheck:
+      test:         ["CMD-SHELL", "curl -sf http://localhost:8082/actuator/health || exit 1"]
+      interval:     10s
+      timeout:      5s
+      retries:      15
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  transaction-service:
+    image: eclipse-temurin:21-jre
+    working_dir: /app
+    volumes:
+      - ./transaction-service:/app
+    command: java -jar target/transaction-service-0.0.1-SNAPSHOT.jar
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/transactions_db?serverTimezone=UTC
+      DB_USER:               appuser
+      DB_PASSWORD:           apppassword
+      ACCOUNT_SERVICE_URL:   http://account-service:8082
+    depends_on:
+      db:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+    healthcheck:
+      test:         ["CMD-SHELL", "curl -sf http://localhost:8083/actuator/health || exit 1"]
+      interval:     10s
+      timeout:      5s
+      retries:      15
+      start_period: 60s
+
+volumes:
+  db-data:
+  target-db-data:
