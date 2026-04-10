@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: rating-service
+  config:
+    import: "optional:configserver:http://config-server:8888"
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/appdb}
+    username: ${DB_USER:appuser}
+    password: ${DB_PASSWORD:apppassword}
+    hikari:
+      connection-timeout: 20000
+      initialization-fail-timeout: 60000
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  flyway:
+    enabled: false
+
+server:
+  port: 8084
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: 1.0

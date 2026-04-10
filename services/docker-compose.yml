@@ -137,6 +137,29 @@ services:
       retries:      15
       start_period: 60s
 
+  # ---------------------------------------------------------------------------
+  rating-service:
+    image: eclipse-temurin:21-jre
+    working_dir: /app
+    volumes:
+      - ./rating-service:/app
+    command: java -jar target/rating-service-0.0.1-SNAPSHOT.jar
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://target-db:5432/appdb
+      DB_USER:               appuser
+      DB_PASSWORD:           apppassword
+    depends_on:
+      target-db:
+        condition: service_healthy
+    healthcheck:
+      test:         ["CMD-SHELL", "curl -sf http://localhost:8084/actuator/health || exit 1"]
+      interval:     10s
+      timeout:      5s
+      retries:      15
+      start_period: 60s
+
 volumes:
   db-data:
   target-db-data:
