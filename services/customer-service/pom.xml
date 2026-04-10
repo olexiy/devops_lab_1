@@ -146,6 +146,23 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<image>
+						<name>olexiy/${project.artifactId}:${project.version}</name>
+						<env>
+							<BP_JVM_VERSION>21</BP_JVM_VERSION>
+							<BP_JVM_CDS_ENABLED>true</BP_JVM_CDS_ENABLED>
+							<BP_SPRING_AOT_ENABLED>true</BP_SPRING_AOT_ENABLED>
+						</env>
+					</image>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>process-aot</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
