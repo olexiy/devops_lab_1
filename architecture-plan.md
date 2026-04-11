@@ -18,8 +18,7 @@
 - `transaction-service` — MVP complete, 15 integration tests written (not yet run)
 - `rating-service` — MVP complete, 6 integration tests green (`services/rating-service/`)
 - `gateway` — MVP complete, 5 tests green (`services/infra/gateway/`)
-- `frontend` — MVP complete (Vite + React 19 + Tailwind v4, port 5173)
-- `web/accounts-viewer` — MVP complete (sidebar layout, port 5174)
+- `web/accounts-viewer` — MVP complete (Vite + React 19 + Tailwind v4, sidebar layout, port 5174)
 - `batch-app` — directory structure exists, no code yet
 - `data-generator` — complete (`data-generator/` at repo root)
 
@@ -726,15 +725,13 @@ If a worker pod crashes (OOMKill, node failure):
 
 **Status: MVP complete**
 
-Two React apps, both using Vite + React 19 + Tailwind v4. All API calls proxy through Spring Cloud Gateway on port 8080.
+**Stack:** Vite + React 19 + React Router 7 + Tailwind v4  
+**Location:** `web/accounts-viewer/` at project root  
+**Port:** 5174 (proxies `/api` to gateway on 8080)
 
-### `frontend/` (port 5173) — original dashboard
+### `web/accounts-viewer/` — sidebar dashboard
 
-Top-navbar layout. Pages: Customer list (search + status filter), Customer detail (accounts table), Account detail (rating + transactions).
-
-### `web/accounts-viewer/` (port 5174) — modern sidebar dashboard
-
-Dark sidebar (slate-900) layout. Same three pages with improved design: initials avatars, ring-inset badges, score bar on rating, +/- colored transaction amounts, SVG breadcrumb chevrons.
+Dark sidebar (slate-900) layout. Three pages: Customer list (search + status filter), Customer detail (accounts table), Account detail (rating + transactions). Design details: initials avatars, ring-inset badges, score bar on rating card, +/- colored transaction amounts, SVG breadcrumb chevrons.
 
 ### Common technical decisions
 
@@ -832,7 +829,7 @@ For local dev: routes point to `localhost:808x`. In k8s: service DNS names.
 | 3 | Test Data Generator | Done | Needed before frontend can show anything |
 | 4 | Rating Service (read-only) | Done | Tiny service, needed by frontend |
 | 5 | Spring Cloud Gateway | Done | Frontend needs single entry point |
-| 6 | React Dashboard | Done | Two apps: frontend/ and web/accounts-viewer/ |
+| 6 | React Dashboard | Done | web/accounts-viewer/ — sidebar layout |
 | 7 | Monitoring/Tracing instrumentation | Planned | After services are stable |
 | 8 | Batch system implementation | Planned | Parallel workstream |
 | 9 | GitHub Actions CI | Planned | After code is stable |

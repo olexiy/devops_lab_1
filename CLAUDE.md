@@ -17,8 +17,7 @@ Two parallel workstreams sharing the same Kubernetes cluster and observability s
 - `transaction-service` — MVP complete, 15 integration tests written (not yet run)
 - `rating-service` — MVP complete, 6 integration tests green (`services/rating-service/`)
 - `gateway` — MVP complete, 5 tests green (`services/infra/gateway/`)
-- `frontend` — MVP complete (Vite + React 19 + Tailwind v4, read-only dashboard at port 5173)
-- `web/accounts-viewer` — MVP complete (second React app, sidebar layout, port 5174)
+- `web/accounts-viewer` — MVP complete (Vite + React 19 + Tailwind v4, sidebar layout, port 5174)
 - `batch-app` — directory structure exists, no code yet
 - `data-generator` — complete (`data-generator/` at repo root)
 
