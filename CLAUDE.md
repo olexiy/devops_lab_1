@@ -17,7 +17,8 @@ Two parallel workstreams sharing the same Kubernetes cluster and observability s
 - `transaction-service` — MVP complete, 15 integration tests written (not yet run)
 - `rating-service` — MVP complete, 6 integration tests green (`services/rating-service/`)
 - `gateway` — MVP complete, 5 tests green (`services/infra/gateway/`)
-- `frontend` — planned (Vite + React + Tailwind, read-only dashboard)
+- `frontend` — MVP complete (Vite + React 19 + Tailwind v4, read-only dashboard at port 5173)
+- `web/accounts-viewer` — MVP complete (second React app, sidebar layout, port 5174)
 - `batch-app` — directory structure exists, no code yet
 - `data-generator` — complete (`data-generator/` at repo root)
 
@@ -38,7 +39,7 @@ Two parallel workstreams sharing the same Kubernetes cluster and observability s
 | 3 | Test Data Generator (Python) | Done |
 | 4 | Rating Service (read-only, PostgreSQL) | Done |
 | 5 | Spring Cloud Gateway | Done |
-| 6 | React Dashboard | Planned |
+| 6 | React Dashboard | Done |
 | 7 | Monitoring/Tracing instrumentation | Planned |
 | 8 | Batch system implementation | Planned |
 | 9 | GitHub Actions CI | Planned |

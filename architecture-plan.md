@@ -18,7 +18,8 @@
 - `transaction-service` — MVP complete, 15 integration tests written (not yet run)
 - `rating-service` — MVP complete, 6 integration tests green (`services/rating-service/`)
 - `gateway` — MVP complete, 5 tests green (`services/infra/gateway/`)
-- `frontend` — not started
+- `frontend` — MVP complete (Vite + React 19 + Tailwind v4, port 5173)
+- `web/accounts-viewer` — MVP complete (sidebar layout, port 5174)
 - `batch-app` — directory structure exists, no code yet
 - `data-generator` — complete (`data-generator/` at repo root)
 
@@ -723,24 +724,27 @@ If a worker pod crashes (OOMKill, node failure):
 
 ## Part 6: React Dashboard
 
-**Stack:** Vite + React + JavaScript + Tailwind CSS  
-**Location:** `frontend/` at project root  
-**Purpose:** Read-only data viewer for all three MySQL databases + ratings from PostgreSQL
+**Status: MVP complete**
 
-### 6.1 Pages
+Two React apps, both using Vite + React 19 + Tailwind v4. All API calls proxy through Spring Cloud Gateway on port 8080.
 
-1. **Customers list** — paginated table (name, email, status, # accounts). Search/filter by name.
-2. **Customer detail** (drill-down) — customer info + list of their accounts.
-3. **Account detail** (drill-down) — account info + rating (if calculated) + transactions table with pagination.
+### `frontend/` (port 5173) — original dashboard
 
-### 6.2 Technical Decisions
+Top-navbar layout. Pages: Customer list (search + status filter), Customer detail (accounts table), Account detail (rating + transactions).
 
-- React Router for navigation between pages
+### `web/accounts-viewer/` (port 5174) — modern sidebar dashboard
+
+Dark sidebar (slate-900) layout. Same three pages with improved design: initials avatars, ring-inset badges, score bar on rating, +/- colored transaction amounts, SVG breadcrumb chevrons.
+
+### Common technical decisions
+
+- React Router 7 for navigation
 - Tailwind CSS for styling (no component library)
-- Native `fetch` API (no axios or react-query — keeping it minimal)
-- Server-side pagination (data can be tens of millions of records)
+- Native `fetch` API (no axios or react-query)
+- Server-side pagination throughout (data can be tens of millions of records)
 - All API calls go through Spring Cloud Gateway (single origin, no CORS issues)
-- Rating data comes from `rating-service` via Gateway (`/api/v1/ratings/{customerId}`)
+- Rating fetches return `null` on 404 (no rating calculated yet) — not an error
+- `npm run dev` in either directory; requires gateway running on port 8080
 
 ---
 
@@ -825,10 +829,10 @@ For local dev: routes point to `localhost:808x`. In k8s: service DNS names.
 |---|------|--------|---------------|
 | 1 | Infrastructure scripts | Done | Foundation for everything |
 | 2 | Microservices (customer, account, transaction) | MVP done | Primary learning vehicle |
-| 3 | Test Data Generator | Planned | Needed before frontend can show anything |
-| 4 | Rating Service (read-only) | Planned | Tiny service, needed by frontend |
-| 5 | Spring Cloud Gateway | Planned | Frontend needs single entry point |
-| 6 | React Dashboard | Planned | Depends on gateway + data |
+| 3 | Test Data Generator | Done | Needed before frontend can show anything |
+| 4 | Rating Service (read-only) | Done | Tiny service, needed by frontend |
+| 5 | Spring Cloud Gateway | Done | Frontend needs single entry point |
+| 6 | React Dashboard | Done | Two apps: frontend/ and web/accounts-viewer/ |
 | 7 | Monitoring/Tracing instrumentation | Planned | After services are stable |
 | 8 | Batch system implementation | Planned | Parallel workstream |
 | 9 | GitHub Actions CI | Planned | After code is stable |
