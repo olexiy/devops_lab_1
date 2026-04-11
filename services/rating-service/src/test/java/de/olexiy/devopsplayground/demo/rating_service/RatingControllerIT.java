@@ -1,8 +1,9 @@
 package de.olexiy.devopsplayground.demo.rating_service;
 
-import de.olexiy.devopsplayground.demo.rating_service.repository.CustomerRatingRepository;
 import de.olexiy.devopsplayground.demo.rating_service.entity.CustomerRating;
+import de.olexiy.devopsplayground.demo.rating_service.repository.CustomerRatingRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -41,69 +42,75 @@ class RatingControllerIT {
     }
 
     // -----------------------------------------------------------------------
-    // 1. GET existing rating → 200 with correct body
+    // GET /api/v1/ratings/{customerId}
     // -----------------------------------------------------------------------
-    @Test
-    void getByCustomerId_exists_returns200WithBody() throws Exception {
-        insertRating(42L, "85.00", "A", "LOW");
+    @Nested
+    class GetByCustomerId {
 
-        mockMvc.perform(get("/api/v1/ratings/42"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.customerId").value(42))
-                .andExpect(jsonPath("$.ratingScore").value(85.0))
-                .andExpect(jsonPath("$.ratingClass").value("A"))
-                .andExpect(jsonPath("$.riskLevel").value("LOW"))
-                .andExpect(jsonPath("$.calculatedAt").isNotEmpty())
-                .andExpect(jsonPath("$.calculationVersion").value("1.0"));
+        @Test
+        void exists_returns200WithBody() throws Exception {
+            insertRating(42L, "85.00", "A", "LOW");
+
+            mockMvc.perform(get("/api/v1/ratings/42"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.customerId").value(42))
+                    .andExpect(jsonPath("$.ratingScore").value(85.0))
+                    .andExpect(jsonPath("$.ratingClass").value("A"))
+                    .andExpect(jsonPath("$.riskLevel").value("LOW"))
+                    .andExpect(jsonPath("$.calculatedAt").isNotEmpty())
+                    .andExpect(jsonPath("$.calculationVersion").value("1.0"));
+        }
+
+        @Test
+        void notFound_returns404WithErrorBody() throws Exception {
+            mockMvc.perform(get("/api/v1/ratings/999"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.message").value(containsString("999")));
+        }
     }
 
     // -----------------------------------------------------------------------
-    // 2. GET non-existing rating → 404 with error body
+    // GET /api/v1/ratings
     // -----------------------------------------------------------------------
-    @Test
-    void getByCustomerId_notFound_returns404() throws Exception {
-        mockMvc.perform(get("/api/v1/ratings/999"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.message").value(containsString("999")));
+    @Nested
+    class GetAll {
+
+        @Test
+        void withData_returnsPaginatedList() throws Exception {
+            insertRating(1L, "90.00", "A", "LOW");
+            insertRating(2L, "70.00", "B", "MEDIUM");
+            insertRating(3L, "50.00", "C", "HIGH");
+
+            mockMvc.perform(get("/api/v1/ratings?page=0&size=2"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content", hasSize(2)))
+                    .andExpect(jsonPath("$.page.totalElements").value(3))
+                    .andExpect(jsonPath("$.page.totalPages").value(2))
+                    .andExpect(jsonPath("$.page.size").value(2));
+        }
+
+        @Test
+        void empty_returnsEmptyPage() throws Exception {
+            mockMvc.perform(get("/api/v1/ratings"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content", hasSize(0)))
+                    .andExpect(jsonPath("$.page.totalElements").value(0));
+        }
     }
 
     // -----------------------------------------------------------------------
-    // 3. GET paginated list → 200 with pagination metadata
+    // Actuator
     // -----------------------------------------------------------------------
-    @Test
-    void getAll_withData_returnsPaginatedList() throws Exception {
-        insertRating(1L, "90.00", "A", "LOW");
-        insertRating(2L, "70.00", "B", "MEDIUM");
-        insertRating(3L, "50.00", "C", "HIGH");
+    @Nested
+    class Actuator {
 
-        mockMvc.perform(get("/api/v1/ratings?page=0&size=2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(2)))
-                .andExpect(jsonPath("$.totalElements").value(3))
-                .andExpect(jsonPath("$.totalPages").value(2))
-                .andExpect(jsonPath("$.size").value(2));
-    }
-
-    // -----------------------------------------------------------------------
-    // 4. GET paginated list when empty → 200 with empty content
-    // -----------------------------------------------------------------------
-    @Test
-    void getAll_empty_returnsEmptyPage() throws Exception {
-        mockMvc.perform(get("/api/v1/ratings"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(0)))
-                .andExpect(jsonPath("$.totalElements").value(0));
-    }
-
-    // -----------------------------------------------------------------------
-    // 5. Health endpoint → 200
-    // -----------------------------------------------------------------------
-    @Test
-    void healthEndpoint_returns200() throws Exception {
-        mockMvc.perform(get("/actuator/health"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
+        @Test
+        void health_returns200WithStatusUp() throws Exception {
+            mockMvc.perform(get("/actuator/health"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("UP"));
+        }
     }
 
     // -----------------------------------------------------------------------

@@ -1,6 +1,6 @@
 package de.olexiy.devopsplayground.demo.rating_service.exception;
 
-import de.olexiy.devopsplayground.demo.rating_service.dto.ErrorResponse;
+import com.bank.rating.model.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,13 +18,12 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> buildError(HttpStatus status, String message, String path) {
-        ErrorResponse body = ErrorResponse.builder()
+        var body = new ErrorResponse()
                 .timestamp(OffsetDateTime.now())
                 .status(status.value())
                 .error(status.getReasonPhrase())
                 .message(message)
-                .path(path)
-                .build();
+                .path(path);
         return ResponseEntity.status(status).body(body);
     }
 }

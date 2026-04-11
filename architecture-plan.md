@@ -12,14 +12,15 @@
 **Automation:** PowerShell scripts for installation and redeployment of all infrastructure  
 **Approach:** All performance-affecting parameters centralized in a single configuration file
 
-**Current state (April 2025):**
+**Current state (April 2026):**
 - `customer-service` — MVP complete, 16 integration tests green
 - `account-service` — MVP complete, 13 integration tests green
 - `transaction-service` — MVP complete, 15 integration tests written (not yet run)
-- `rating-service` — not started
-- `gateway` — not started
+- `rating-service` — MVP complete, 6 integration tests green (`services/rating-service/`)
+- `gateway` — MVP complete, 5 tests green (`services/infra/gateway/`)
 - `frontend` — not started
 - `batch-app` — directory structure exists, no code yet
+- `data-generator` — complete (`data-generator/` at repo root)
 
 ---
 

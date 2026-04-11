@@ -86,6 +86,7 @@ Adjust `<inputSpec>`, `<apiPackage>`, and `<modelPackage>` for each service.
 | customer-service | `../../docs/openapi/customer-service.yaml` | `com.bank.customer.api` | `com.bank.customer.model` |
 | account-service | `../../docs/openapi/account-service.yaml` | `com.bank.account.api` | `com.bank.account.model` |
 | transaction-service | `../../docs/openapi/transaction-service.yaml` | `com.bank.transaction.api` | `com.bank.transaction.model` |
+| rating-service | `../../docs/openapi/rating-service.yaml` | `com.bank.rating.api` | `com.bank.rating.model` |
 
 ---
 

@@ -14,10 +14,13 @@ spring:
       minimum-idle: 2
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     open-in-view: false
   flyway:
-    enabled: false
+    locations: classpath:db/migration
+  threads:
+    virtual:
+      enabled: true
 
 server:
   port: 8084

@@ -9,21 +9,21 @@ Two parallel workstreams sharing the same Kubernetes cluster and observability s
 1. **Batch system** — nightly recalculation of customer reliability ratings (30-50 million records, ~2-hour SLA). Spring Batch + Argo Workflows.
 2. **Microservices** — Spring Boot REST services for customer account management. Primary learning vehicle for monitoring, distributed tracing, Spring Cloud, and GitOps.
 
-**Authoritative design reference:** [architecture-plan-v3.md](architecture-plan-v3.md) (English). The older `architecture-plan-v2.md` is the Russian original, kept as archive.
+**Authoritative design reference:** [architecture-plan.md](architecture-plan.md)
 
 **Current state:**
 - `customer-service` — MVP complete, 16 integration tests green
 - `account-service` — MVP complete, 13 integration tests green
 - `transaction-service` — MVP complete, 15 integration tests written (not yet run)
-- `rating-service` — planned (read-only, PostgreSQL)
-- `gateway` — planned (Spring Cloud Gateway)
+- `rating-service` — MVP complete, 6 integration tests green (`services/rating-service/`)
+- `gateway` — MVP complete, 5 tests green (`services/infra/gateway/`)
 - `frontend` — planned (Vite + React + Tailwind, read-only dashboard)
 - `batch-app` — directory structure exists, no code yet
-- `data-generator` — planned (Python script for bulk test data)
+- `data-generator` — complete (`data-generator/` at repo root)
 
 ## Critical Rule: Persist All Plans
 
-**Any planning decisions, architecture changes, or feature designs discussed in chat MUST be saved to `architecture-plan-v3.md` or a dedicated document before the session ends.** Do not rely on chat history — it is lost on `/clear` or context compression.
+**Any planning decisions, architecture changes, or feature designs discussed in chat MUST be saved to `architecture-plan.md` or a dedicated document before the session ends.** Do not rely on chat history — it is lost on `/clear` or context compression.
 
 ## Version Policy
 
@@ -35,9 +35,9 @@ Two parallel workstreams sharing the same Kubernetes cluster and observability s
 |---|------|--------|
 | 1 | Infrastructure scripts + observability stack | Done |
 | 2 | Microservices (customer, account, transaction) | MVP done |
-| 3 | Test Data Generator (Python) | Planned |
-| 4 | Rating Service (read-only, PostgreSQL) | Planned |
-| 5 | Spring Cloud Gateway | Planned |
+| 3 | Test Data Generator (Python) | Done |
+| 4 | Rating Service (read-only, PostgreSQL) | Done |
+| 5 | Spring Cloud Gateway | Done |
 | 6 | React Dashboard | Planned |
 | 7 | Monitoring/Tracing instrumentation | Planned |
 | 8 | Batch system implementation | Planned |
@@ -80,8 +80,8 @@ cd services && docker compose up
 | customer-service | 8081 | MySQL `customers_db` |
 | account-service | 8082 | MySQL `accounts_db` |
 | transaction-service | 8083 | MySQL `transactions_db` |
-| rating-service | 8084 | PostgreSQL `appdb` (planned) |
-| gateway | 8080 | none (planned) |
+| rating-service | 8084 | PostgreSQL `appdb` |
+| gateway | 8080 | none |
 
 Inter-service calls: `transaction-service -> account-service -> customer-service`
 
@@ -139,6 +139,12 @@ static WireMockExtension wireMock = WireMockExtension.newInstance()
         .options(wireMockConfig().port(9876))
         .build();
 ```
+
+### Spring Cloud Gateway 5.x — property prefix changed
+Old: `spring.cloud.gateway.*`  
+New: `spring.cloud.gateway.server.webflux.*` (for `spring-cloud-starter-gateway-server-webflux`)
+
+All route definitions and CORS config must use the new prefix. Old prefix is silently ignored — routes will be empty at runtime.
 
 ### Java version
 All services use `<java.version>21</java.version>`. Java 25 is not supported.
