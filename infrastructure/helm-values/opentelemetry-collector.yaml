@@ -65,6 +65,9 @@ config:
         processors: [memory_limiter, batch]
         exporters: [prometheusremotewrite]
 
+service:
+  type: LoadBalancer
+
 # Expose OTLP ports and internal metrics port
 ports:
   otlp:
