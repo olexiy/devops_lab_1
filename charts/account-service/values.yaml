@@ -12,10 +12,10 @@ service:
 resources:
   requests:
     cpu: 100m
-    memory: 256Mi
+    memory: 512Mi
   limits:
     cpu: 500m
-    memory: 512Mi
+    memory: 1Gi
 
 env:
   SPRING_DATASOURCE_URL: "jdbc:mysql://source-db.databases.svc.cluster.local:3306/accounts_db?serverTimezone=UTC"

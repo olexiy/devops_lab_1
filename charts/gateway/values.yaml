@@ -12,10 +12,10 @@ service:
 resources:
   requests:
     cpu: 100m
-    memory: 128Mi
+    memory: 384Mi
   limits:
     cpu: 300m
-    memory: 256Mi
+    memory: 768Mi
 
 env:
   CUSTOMER_SERVICE_URL: "http://customer-service.microservices.svc.cluster.local:8081"
