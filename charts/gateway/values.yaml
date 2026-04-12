@@ -1,0 +1,26 @@
+image:
+  repository: olexiy/gateway
+  tag: "0.0.1-SNAPSHOT"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  port: 8080
+  type: LoadBalancer
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+env:
+  CUSTOMER_SERVICE_URL: "http://customer-service.microservices.svc.cluster.local:8081"
+  ACCOUNT_SERVICE_URL: "http://account-service.microservices.svc.cluster.local:8082"
+  TRANSACTION_SERVICE_URL: "http://transaction-service.microservices.svc.cluster.local:8083"
+  RATING_SERVICE_URL: "http://rating-service.microservices.svc.cluster.local:8084"
+  MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces"
+  MANAGEMENT_METRICS_TAGS_APPLICATION: "gateway"

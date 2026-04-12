@@ -1,0 +1,6 @@
+apiVersion: v2
+name: batch-app
+description: Batch application for nightly rating recalculation (placeholder — not yet implemented)
+type: application
+version: 0.1.0
+appVersion: "0.0.1-SNAPSHOT"

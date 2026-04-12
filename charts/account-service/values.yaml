@@ -1,0 +1,29 @@
+image:
+  repository: olexiy/account-service
+  tag: "0.0.1-SNAPSHOT"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  port: 8082
+  type: ClusterIP
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://source-db.databases.svc.cluster.local:3306/accounts_db?serverTimezone=UTC"
+  CUSTOMER_SERVICE_URL: "http://customer-service.microservices.svc.cluster.local:8081"
+  MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces"
+  MANAGEMENT_METRICS_TAGS_APPLICATION: "account-service"
+  JAVA_TOOL_OPTIONS: "-Dmanagement.metrics.distribution.percentiles-histogram.http.server.requests=true"
+
+db:
+  username: appuser
+  password: apppassword  # DEV ONLY — replace with ExternalSecret for production

@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: microservices
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - service: customer-service
+          - service: account-service
+          - service: transaction-service
+          - service: rating-service
+          - service: gateway
+  template:
+    metadata:
+      name: "{{service}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/olexiy/devops_lab_1
+        targetRevision: HEAD
+        path: "charts/{{service}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: microservices
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

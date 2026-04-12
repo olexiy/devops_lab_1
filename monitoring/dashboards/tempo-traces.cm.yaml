@@ -1,0 +1,161 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-traces
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  tempo-traces.json: |
+    {
+      "title": "Tempo: Traces & Service Map",
+      "uid": "tempo-traces-v1",
+      "description": "Distributed trace explorer and service dependency graph for all microservices",
+      "tags": ["tempo", "traces", "service-map"],
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "graphTooltip": 1,
+      "timezone": "browser",
+      "panels": [
+
+        {
+          "id": 1, "type": "row", "title": "Service Map",
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 2,
+          "type": "nodeGraph",
+          "title": "Service Dependency Graph",
+          "gridPos": { "x": 0, "y": 1, "w": 24, "h": 12 },
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "tempo", "uid": "tempo" },
+              "queryType": "serviceMap",
+              "serviceMapQuery": "{}"
+            }
+          ],
+          "options": {
+            "nodes": { "mainStatUnit": "r/min" },
+            "edges": { "mainStatUnit": "r/min" }
+          }
+        },
+
+        {
+          "id": 3, "type": "row", "title": "Trace Search",
+          "gridPos": { "x": 0, "y": 13, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 4,
+          "type": "traces",
+          "title": "Trace Explorer",
+          "gridPos": { "x": 0, "y": 14, "w": 24, "h": 12 },
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "tempo", "uid": "tempo" },
+              "queryType": "traceql",
+              "query": "{ duration > 100ms }"
+            }
+          ],
+          "options": {
+            "frameType": "trace"
+          }
+        },
+
+        {
+          "id": 5, "type": "row", "title": "Span Metrics (from Tempo metrics generator)",
+          "gridPos": { "x": 0, "y": 26, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Request Rate by Service",
+          "gridPos": { "x": 0, "y": 27, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (client, server) (rate(traces_service_graph_request_total[1m]))",
+              "legendFormat": "{{client}} -> {{server}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" } }
+          },
+          "options": { "tooltip": { "mode": "multi" } }
+        },
+
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "P99 Latency by Service (span metrics)",
+          "gridPos": { "x": 12, "y": 27, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.99, sum by (le, service_name) (rate(traces_spanmetrics_duration_milliseconds_bucket[5m])))",
+              "legendFormat": "{{service_name}} p99"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "ms", "color": { "mode": "palette-classic" } }
+          },
+          "options": { "tooltip": { "mode": "multi" } }
+        },
+
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Span Error Rate by Service",
+          "gridPos": { "x": 0, "y": 35, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (service_name) (rate(traces_spanmetrics_calls_total{status_code=\"STATUS_CODE_ERROR\"}[1m])) / sum by (service_name) (rate(traces_spanmetrics_calls_total[1m]))",
+              "legendFormat": "{{service_name}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "percentunit", "color": { "mode": "palette-classic" } }
+          },
+          "options": { "tooltip": { "mode": "multi" } }
+        },
+
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Request Rate by Span Name (Top Operations)",
+          "gridPos": { "x": 12, "y": 35, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "topk(10, sum by (span_name, service_name) (rate(traces_spanmetrics_calls_total[1m])))",
+              "legendFormat": "{{service_name}}: {{span_name}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" } }
+          },
+          "options": { "tooltip": { "mode": "multi" } }
+        }
+
+      ]
+    }

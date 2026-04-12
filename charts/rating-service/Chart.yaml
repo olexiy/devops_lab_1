@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rating-service
+description: Rating Service microservice (read-only, PostgreSQL)
+type: application
+version: 0.1.0
+appVersion: "0.0.1-SNAPSHOT"

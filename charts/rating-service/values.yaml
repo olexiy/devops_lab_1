@@ -1,0 +1,28 @@
+image:
+  repository: olexiy/rating-service
+  tag: "0.0.1-SNAPSHOT"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  port: 8084
+  type: ClusterIP
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://target-db.databases.svc.cluster.local:5432/appdb"
+  MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces"
+  MANAGEMENT_METRICS_TAGS_APPLICATION: "rating-service"
+  JAVA_TOOL_OPTIONS: "-Dmanagement.metrics.distribution.percentiles-histogram.http.server.requests=true"
+
+db:
+  username: appuser
+  password: apppassword  # DEV ONLY — replace with ExternalSecret for production
