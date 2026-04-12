@@ -12,6 +12,7 @@ spec:
           - service: transaction-service
           - service: rating-service
           - service: gateway
+          - service: accounts-viewer
   template:
     metadata:
       name: "{{service}}"

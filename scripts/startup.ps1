@@ -231,7 +231,12 @@ Write-Host ""
 Write-Host "=== Starting port-forwards ==="
 
 Start-PortForward -ServiceName "argo-server"   -Namespace $nsArgo   -PortMapping "2746:2746"
-Start-PortForward -ServiceName "argocd-server" -Namespace $nsArgocd -PortMapping "8080:443"
+Start-PortForward -ServiceName "argocd-server" -Namespace $nsArgocd -PortMapping "8085:443"
+
+# Microservices (ArgoCD-managed, ClusterIP — port-forward for local access)
+# Gateway is LoadBalancer: accessible at localhost:8080 without a port-forward.
+# accounts-viewer is ClusterIP: expose on localhost:3000.
+Start-PortForward -ServiceName "accounts-viewer" -Namespace "microservices" -PortMapping "5174:80"
 
 Start-PortForward -ServiceName "kube-prometheus-stack-prometheus"   -Namespace $nsMonitoring -PortMapping "9090:9090"
 Start-PortForward -ServiceName "kube-prometheus-stack-alertmanager" -Namespace $nsMonitoring -PortMapping "9093:9093"
@@ -274,7 +279,9 @@ Write-Host "Tempo                    http://localhost:3200"
 Write-Host "OTel Collector (gRPC)    localhost:4317"
 Write-Host "OTel Collector (HTTP)    http://localhost:4318"
 Write-Host "Argo Workflows           https://localhost:2746  (skip login)"
-Write-Host "Argo CD                  https://localhost:8080  (admin / $argoPwd)"
+Write-Host "Argo CD                  https://localhost:8085  (admin / $argoPwd)"
+Write-Host "Gateway API              http://localhost:8080   (LoadBalancer — no port-forward needed)"
+Write-Host "Accounts Viewer          http://localhost:5174   (port-forward to accounts-viewer pod)"
 Write-Host "MySQL (Docker Compose)   localhost:3307  (appuser / apppassword)"
 Write-Host "PostgreSQL (Docker Comp) localhost:5433  (appuser / apppassword)"
 Write-Host ""

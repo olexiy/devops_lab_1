@@ -1,0 +1,54 @@
+name: accounts-viewer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/accounts-viewer/**'
+      - '.github/workflows/accounts-viewer.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/accounts-viewer/**'
+      - '.github/workflows/accounts-viewer.yml'
+
+env:
+  SERVICE_DIR: web/accounts-viewer
+  IMAGE: olexiy/accounts-viewer
+
+jobs:
+  build-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/accounts-viewer/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: npm ci
+
+      - name: Build
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: npm run build
+
+      - name: Login to DockerHub
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.SERVICE_DIR }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:0.1.0

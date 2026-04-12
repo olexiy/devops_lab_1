@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $namespace = "argocd"
 $installUrl = "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
-$localPort = 8080
+$localPort = 8085
 
 function Stop-ArgoCdPortForward {
     Write-Host "Cleaning old argocd port-forward processes..."
