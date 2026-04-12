@@ -1,22 +1,24 @@
-# Docker Compose — local microservice stack (alternative to start-services.ps1)
+# Docker Compose — local microservice stack
 #
 # USAGE
 # -----
-# 1. Build JARs first (one time, or after code changes):
-#      cd services\customer-service    && .\mvnw.cmd package -DskipTests
-#      cd services\account-service     && .\mvnw.cmd package -DskipTests
-#      cd services\transaction-service && .\mvnw.cmd package -DskipTests
+# 1. Build images (one time, or after code changes):
+#      cd services\customer-service    && .\mvnw.cmd spring-boot:build-image -DskipTests
+#      cd services\account-service     && .\mvnw.cmd spring-boot:build-image -DskipTests
+#      cd services\transaction-service && .\mvnw.cmd spring-boot:build-image -DskipTests
+#      cd services\rating-service      && .\mvnw.cmd spring-boot:build-image -DskipTests
+#      cd services\infra\gateway       && .\mvnw.cmd spring-boot:build-image -DskipTests
 #
 # 2. Start the stack:
 #      docker compose up          # foreground; Ctrl-C to stop
 #      docker compose up -d       # detached; docker compose down to stop
 #
-# 3. Smoke test (PowerShell):
-#      See docs/local-dev.md — smoke test section
+# 3. Smoke test:
+#      curl http://localhost:8080/actuator/health
 #
 # DIFFERENCES from running via start-services.ps1
 # -------------------------------------------------
-# - Uses its own MySQL container (port 3307 on host).
+# - Uses its own MySQL/PostgreSQL containers (ports 3307, 5433 on host).
 #   No Kubernetes port-forward required.
 # - All services run inside Docker network; they reach each other by service name.
 # - OTel / Grafana / Prometheus are NOT included here — start the Kubernetes
@@ -64,34 +66,24 @@ services:
 
   # ---------------------------------------------------------------------------
   customer-service:
-    image: eclipse-temurin:21-jre
-    working_dir: /app
-    volumes:
-      - ./customer-service:/app
-    command: java -jar target/customer-service-0.0.1-SNAPSHOT.jar
+    image: olexiy/customer-service:0.0.1-SNAPSHOT
     ports:
       - "8081:8081"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/customers_db?serverTimezone=UTC
       DB_USER:               appuser
       DB_PASSWORD:           apppassword
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://host.docker.internal:4318/v1/traces
+      MANAGEMENT_METRICS_TAGS_APPLICATION: customer-service
+      JAVA_TOOL_OPTIONS: -Dmanagement.metrics.distribution.percentiles-histogram.http.server.requests=true
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test:         ["CMD-SHELL", "curl -sf http://localhost:8081/actuator/health || exit 1"]
-      interval:     10s
-      timeout:      5s
-      retries:      15
-      start_period: 60s
+    restart: on-failure
 
   # ---------------------------------------------------------------------------
   account-service:
-    image: eclipse-temurin:21-jre
-    working_dir: /app
-    volumes:
-      - ./account-service:/app
-    command: java -jar target/account-service-0.0.1-SNAPSHOT.jar
+    image: olexiy/account-service:0.0.1-SNAPSHOT
     ports:
       - "8082:8082"
     environment:
@@ -99,25 +91,17 @@ services:
       DB_USER:                appuser
       DB_PASSWORD:            apppassword
       CUSTOMER_SERVICE_URL:   http://customer-service:8081
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://host.docker.internal:4318/v1/traces
+      MANAGEMENT_METRICS_TAGS_APPLICATION: account-service
+      JAVA_TOOL_OPTIONS: -Dmanagement.metrics.distribution.percentiles-histogram.http.server.requests=true
     depends_on:
       db:
         condition: service_healthy
-      customer-service:
-        condition: service_healthy
-    healthcheck:
-      test:         ["CMD-SHELL", "curl -sf http://localhost:8082/actuator/health || exit 1"]
-      interval:     10s
-      timeout:      5s
-      retries:      15
-      start_period: 60s
+    restart: on-failure
 
   # ---------------------------------------------------------------------------
   transaction-service:
-    image: eclipse-temurin:21-jre
-    working_dir: /app
-    volumes:
-      - ./transaction-service:/app
-    command: java -jar target/transaction-service-0.0.1-SNAPSHOT.jar
+    image: olexiy/transaction-service:0.0.1-SNAPSHOT
     ports:
       - "8083:8083"
     environment:
@@ -125,41 +109,68 @@ services:
       DB_USER:               appuser
       DB_PASSWORD:           apppassword
       ACCOUNT_SERVICE_URL:   http://account-service:8082
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://host.docker.internal:4318/v1/traces
+      MANAGEMENT_METRICS_TAGS_APPLICATION: transaction-service
+      JAVA_TOOL_OPTIONS: -Dmanagement.metrics.distribution.percentiles-histogram.http.server.requests=true
     depends_on:
       db:
         condition: service_healthy
-      account-service:
-        condition: service_healthy
-    healthcheck:
-      test:         ["CMD-SHELL", "curl -sf http://localhost:8083/actuator/health || exit 1"]
-      interval:     10s
-      timeout:      5s
-      retries:      15
-      start_period: 60s
+    restart: on-failure
 
   # ---------------------------------------------------------------------------
   rating-service:
-    image: eclipse-temurin:21-jre
-    working_dir: /app
-    volumes:
-      - ./rating-service:/app
-    command: java -jar target/rating-service-0.0.1-SNAPSHOT.jar
+    image: olexiy/rating-service:0.0.1-SNAPSHOT
     ports:
       - "8084:8084"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://target-db:5432/appdb
       DB_USER:               appuser
       DB_PASSWORD:           apppassword
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://host.docker.internal:4318/v1/traces
+      MANAGEMENT_METRICS_TAGS_APPLICATION: rating-service
+      JAVA_TOOL_OPTIONS: -Dmanagement.metrics.distribution.percentiles-histogram.http.server.requests=true
     depends_on:
       target-db:
         condition: service_healthy
-    healthcheck:
-      test:         ["CMD-SHELL", "curl -sf http://localhost:8084/actuator/health || exit 1"]
-      interval:     10s
-      timeout:      5s
-      retries:      15
-      start_period: 60s
+    restart: on-failure
+
+  # ---------------------------------------------------------------------------
+  gateway:
+    image: olexiy/gateway:0.0.1-SNAPSHOT
+    ports:
+      - "8090:8080"
+    environment:
+      CUSTOMER_SERVICE_URL:    http://customer-service:8081
+      ACCOUNT_SERVICE_URL:     http://account-service:8082
+      TRANSACTION_SERVICE_URL: http://transaction-service:8083
+      RATING_SERVICE_URL:      http://rating-service:8084
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://host.docker.internal:4318/v1/traces
+      MANAGEMENT_METRICS_TAGS_APPLICATION: gateway
+      JAVA_TOOL_OPTIONS: -Dmanagement.metrics.distribution.percentiles-histogram.http.server.requests=true
+    depends_on:
+      - customer-service
+      - account-service
+      - transaction-service
+      - rating-service
+    restart: on-failure
+
+  # ---------------------------------------------------------------------------
+  accounts-viewer:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ../web/accounts-viewer:/app
+      - accounts-viewer-node-modules:/app/node_modules
+    command: sh -c "npm ci && npm run dev -- --host"
+    ports:
+      - "5174:5174"
+    environment:
+      GATEWAY_URL: http://gateway:8080
+    depends_on:
+      - gateway
+    restart: on-failure
 
 volumes:
   db-data:
   target-db-data:
+  accounts-viewer-node-modules:

@@ -151,8 +151,8 @@
 						<name>olexiy/${project.artifactId}:${project.version}</name>
 						<env>
 							<BP_JVM_VERSION>21</BP_JVM_VERSION>
-							<BP_JVM_CDS_ENABLED>true</BP_JVM_CDS_ENABLED>
-							<BP_SPRING_AOT_ENABLED>true</BP_SPRING_AOT_ENABLED>
+							<BP_JVM_CDS_ENABLED>false</BP_JVM_CDS_ENABLED>
+							<BP_SPRING_AOT_ENABLED>false</BP_SPRING_AOT_ENABLED>
 						</env>
 					</image>
 				</configuration>

@@ -1,0 +1,300 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservices-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  microservices-overview.json: |
+    {
+      "title": "Microservices Overview",
+      "uid": "microservices-v1",
+      "description": "HTTP traffic, latency percentiles, and JVM health for all 5 Spring Boot services",
+      "tags": ["microservices", "spring-boot", "http", "jvm"],
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "10s",
+      "time": { "from": "now-30m", "to": "now" },
+      "graphTooltip": 1,
+      "timezone": "browser",
+      "panels": [
+
+        {
+          "id": 1, "type": "row", "title": "Traffic",
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Request Rate (req/s)",
+          "description": "Inbound HTTP requests per second, split by service",
+          "gridPos": { "x": 0, "y": 1, "w": 12, "h": 8 },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "lineWidth": 2, "fillOpacity": 10 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{application=~\".+\"}[1m])) by (application)",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "5xx Error Rate (%)",
+          "description": "Server-side errors as a percentage of total requests",
+          "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "custom": { "lineWidth": 2, "fillOpacity": 10 },
+              "color": { "mode": "palette-classic" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 5 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\",application=~\".+\"}[1m])) by (application) / sum(rate(http_server_requests_seconds_count{application=~\".+\"}[1m])) by (application) * 100",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 4, "type": "row", "title": "Latency (ms)",
+          "gridPos": { "x": 0, "y": 9, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "P50 Latency (ms)",
+          "gridPos": { "x": 0, "y": 10, "w": 8, "h": 8 },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": { "lineWidth": 2, "fillOpacity": 5 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{application=~\".+\"}[1m])) by (le, application)) * 1000",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "P95 Latency (ms)",
+          "gridPos": { "x": 8, "y": 10, "w": 8, "h": 8 },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": { "lineWidth": 2, "fillOpacity": 5 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=~\".+\"}[1m])) by (le, application)) * 1000",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "P99 Latency (ms)",
+          "gridPos": { "x": 16, "y": 10, "w": 8, "h": 8 },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": { "lineWidth": 2, "fillOpacity": 5 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=~\".+\"}[1m])) by (le, application)) * 1000",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 8, "type": "row", "title": "JVM Health",
+          "gridPos": { "x": 0, "y": 18, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Heap Used (MB)",
+          "gridPos": { "x": 0, "y": 19, "w": 8, "h": 8 },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "decmbytes",
+              "custom": { "lineWidth": 2, "fillOpacity": 10 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{area=\"heap\",application=~\".+\"}) by (application) / 1048576",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "CPU Usage (%)",
+          "gridPos": { "x": 8, "y": 19, "w": 8, "h": 8 },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": { "lineWidth": 2, "fillOpacity": 10 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "process_cpu_usage{application=~\".+\"} * 100",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 11,
+          "type": "timeseries",
+          "title": "GC Pause Duration (ms/s)",
+          "description": "Milliseconds spent in GC pauses per second — spikes here explain latency spikes above",
+          "gridPos": { "x": 16, "y": 19, "w": 8, "h": 8 },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": { "lineWidth": 2, "fillOpacity": 5 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(jvm_gc_pause_seconds_sum{application=~\".+\"}[1m])) by (application) * 1000",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        },
+
+        {
+          "id": 12, "type": "row", "title": "Slowest Endpoints",
+          "gridPos": { "x": 0, "y": 27, "w": 24, "h": 1 },
+          "collapsed": false
+        },
+
+        {
+          "id": 13,
+          "type": "bargauge",
+          "title": "Top 10 Slowest Endpoints — P95 Latency (ms, last 5 min)",
+          "description": "Which URI+method combinations are slowest. Good target for load test analysis.",
+          "gridPos": { "x": 0, "y": 28, "w": 24, "h": 10 },
+          "options": {
+            "orientation": "horizontal",
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 100 },
+                  { "color": "red", "value": 300 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "topk(10, histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=~\".+\",uri!~\"/actuator.*|UNKNOWN\"}[5m])) by (le, application, uri, method)) * 1000)",
+              "legendFormat": "{{application}}  {{method}} {{uri}}",
+              "refId": "A",
+              "instant": true
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "" }
+        }
+
+      ]
+    }
